@@ -1,0 +1,9 @@
+jax
+jaxlib
+flax
+flake8
+pytest
+pre-commit
+isort
+yapf==0.30.0
+mypy
