@@ -1,5 +1,7 @@
 # JAX ResNet - Implementation of ResNet, ResNet-D, and ResNeSt in Flax
 
+![Build & Tests](https://github.com/n2cholas/jax-resnet/workflows/Build%20and%20Tests/badge.svg)
+
 Work in progress!!
 
 A Flax (Linen) implementation of ResNet (He, Kaiming, et al. 2015), ResNet-D
