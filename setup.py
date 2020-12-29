@@ -23,7 +23,7 @@ readme = read('README.md')
 
 VERSION = find_version('jax_resnet', '__init__.py')
 
-requirements = ["jax", "jaxlib" "flax"]
+requirements = ['jax', 'jaxlib', 'flax']
 
 setup(
     # Metadata

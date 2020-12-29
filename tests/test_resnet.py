@@ -1,3 +1,4 @@
+import jax
 import pytest
 
 from jax_resnet import *  # noqa

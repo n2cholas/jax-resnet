@@ -65,7 +65,7 @@ class ResNetBlock(nn.Module):
         if self.bottleneck:
             n_filters = self.n_hidden * 4
             y = self.conv_layer_cls(self.n_hidden, kernel_size=(1, 1))(x, train=train)
-            y = self.conv_layer_cls(self.n_hidden, strides=self.strides)(y, trian=train)
+            y = self.conv_layer_cls(self.n_hidden, strides=self.strides)(y, train=train)
             y = self.conv_layer_cls(n_filters, kernel_size=(1, 1),
                                     is_last=True)(y, train=train)
         else:
