@@ -26,3 +26,14 @@ To-Do:
 - [ ] Verify ResNeSt and ResNeSt-Fast intermediate shapes.
 - [ ] Train all three models on ImageNet + release checkpoints
 - [ ] ...probably lots more.
+
+## References
+
+- [Deep Residual Learning for Image Recognition. Kaiming He, Xiangyu Zhang,
+  Shaoqing Ren, Jian Sun. _arXiv 2015_.](https://arxiv.org/abs/1512.03385)
+- [Bag of Tricks for Image Classification with Convolutional Neural Networks.
+  Tong He, Zhi Zhang, Hang Zhang, Zhongyue Zhang, Junyuan Xie, Mu Li. _CVPR
+  2019_.](https://arxiv.org/abs/1812.01187)
+- [ResNeSt: Split-Attention Networks. Hang Zhang, Chongruo Wu, Zhongyue Zhang,
+  Yi Zhu, Zhi Zhang, Haibin Lin, Yue Sun, Tong He, Jonas Mueller, R. Manmatha,
+  Mu Li, Alexander Smola. _arXiv 2020_.](https://arxiv.org/abs/2004.08955)
