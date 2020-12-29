@@ -25,7 +25,7 @@ class SplAtConv2d(nn.Module):
     radix: int = 2
     reduction_factor: int = 4
 
-    conv_layer_cls: ModuleDef = ConvBlock
+    conv_block_cls: ModuleDef = ConvBlock
     cardinality: int = groups
 
     # Match extra bias here:
@@ -33,12 +33,12 @@ class SplAtConv2d(nn.Module):
     match_reference: bool = False
 
     def setup(self):
-        self.conv_cls = self.conv_layer_cls.conv_cls
+        self.conv_cls = self.conv_block_cls.conv_cls
 
     @nn.compact
     def __call__(self, x, train: bool = True):
         inter_channels = max(x.shape[-1] * self.radix // self.reduction_factor, 32)
-        x = self.conv_layer_cls(self.channels * self.radix,
+        x = self.conv_block_cls(self.channels * self.radix,
                                 kernel_size=self.kernel_size,
                                 strides=self.strides,
                                 groups=self.groups * self.radix,
@@ -56,7 +56,7 @@ class SplAtConv2d(nn.Module):
 
         # Remove force_conv_bias after resolving
         # github.com/zhanghang1989/ResNeSt/issues/125
-        gap = self.conv_layer_cls(inter_channels,
+        gap = self.conv_block_cls(inter_channels,
                                   kernel_size=(1, 1),
                                   groups=self.cardinality,
                                   force_conv_bias=self.match_reference)(gap,

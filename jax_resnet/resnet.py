@@ -8,38 +8,38 @@ from .splat import SplAtConv2d
 
 
 class ResNetStem(nn.Module):
-    conv_layer_cls: ModuleDef = ConvBlock
+    conv_block_cls: ModuleDef = ConvBlock
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        return self.conv_layer_cls(64,
+        return self.conv_block_cls(64,
                                    kernel_size=(7, 7),
                                    strides=(2, 2),
                                    padding=[(3, 3), (3, 3)])(x, train=train)
 
 
 class ResNetDStem(nn.Module):
-    conv_layer_cls: ModuleDef = ConvBlock
+    conv_block_cls: ModuleDef = ConvBlock
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        x = self.conv_layer_cls((x.shape[-1] + 1) * 8, strides=(2, 2))(x, train=train)
-        x = self.conv_layer_cls(64, strides=(1, 1))(x, train=train)
-        x = self.conv_layer_cls(64, strides=(1, 1))(x, train=train)
+        x = self.conv_block_cls((x.shape[-1] + 1) * 8, strides=(2, 2))(x, train=train)
+        x = self.conv_block_cls(64, strides=(1, 1))(x, train=train)
+        x = self.conv_block_cls(64, strides=(1, 1))(x, train=train)
         return x
 
 
 class ResNeStStem(nn.Module):
-    conv_layer_cls: ModuleDef = ConvBlock
+    conv_block_cls: ModuleDef = ConvBlock
     stem_width: int = 64
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        x = self.conv_layer_cls(self.stem_width, kernel_size=(3, 3),
+        x = self.conv_block_cls(self.stem_width, kernel_size=(3, 3),
                                 strides=(2, 2))(x, train=train)
-        x = self.conv_layer_cls(self.stem_width, kernel_size=(3, 3),
+        x = self.conv_block_cls(self.stem_width, kernel_size=(3, 3),
                                 strides=(1, 1))(x, train=train)
-        x = self.conv_layer_cls(self.stem_width * 2, kernel_size=(3, 3),
+        x = self.conv_block_cls(self.stem_width * 2, kernel_size=(3, 3),
                                 strides=(1, 1))(x, train=train)
         return x
 
@@ -50,11 +50,11 @@ class ResNetBlock(nn.Module):
     strides: Tuple[int, int] = (1, 1)
 
     activation: Callable = nn.relu
-    conv_layer_cls: ModuleDef = ConvBlock
+    conv_block_cls: ModuleDef = ConvBlock
 
     def residual(self, x, main_shape, train: bool = True):
         if x.shape != main_shape:
-            x = self.conv_layer_cls(main_shape[-1],
+            x = self.conv_block_cls(main_shape[-1],
                                     kernel_size=(1, 1),
                                     strides=self.strides,
                                     activation=lambda y: y)(x, train=train)
@@ -64,14 +64,14 @@ class ResNetBlock(nn.Module):
     def __call__(self, x, train: bool = True):
         if self.bottleneck:
             n_filters = self.n_hidden * 4
-            y = self.conv_layer_cls(self.n_hidden, kernel_size=(1, 1))(x, train=train)
-            y = self.conv_layer_cls(self.n_hidden, strides=self.strides)(y, train=train)
-            y = self.conv_layer_cls(n_filters, kernel_size=(1, 1),
+            y = self.conv_block_cls(self.n_hidden, kernel_size=(1, 1))(x, train=train)
+            y = self.conv_block_cls(self.n_hidden, strides=self.strides)(y, train=train)
+            y = self.conv_block_cls(n_filters, kernel_size=(1, 1),
                                     is_last=True)(y, train=train)
         else:
             n_filters = self.n_hidden
-            y = self.conv_layer_cls(self.n_hidden, strides=self.strides)(x, train=train)
-            y = self.conv_layer_cls(n_filters, is_last=True)(y, train=train)
+            y = self.conv_block_cls(self.n_hidden, strides=self.strides)(x, train=train)
+            y = self.conv_block_cls(n_filters, is_last=True)(y, train=train)
 
         return self.activation(y + self.residual(x, y.shape, train=train))
 
@@ -81,7 +81,7 @@ class ResNetDBlock(ResNetBlock):
         if self.strides != (1, 1):
             x = nn.avg_pool(x, (2, 2), strides=(2, 2), padding='SAME')
         if x.shape[-1] != main_shape[-1]:
-            x = self.conv_layer_cls(main_shape[-1], (1, 1),
+            x = self.conv_block_cls(main_shape[-1], (1, 1),
                                     activation=lambda y: y)(x, train=train)
         return x
 
@@ -92,7 +92,7 @@ class ResNeStBlock(nn.Module):
     avg_pool_first: bool = False
 
     activation: Callable = nn.relu
-    conv_layer_cls: ModuleDef = ConvBlock
+    conv_block_cls: ModuleDef = ConvBlock
     splat_cls: ModuleDef = SplAtConv2d
 
     groups: int = 1  # cardinality
@@ -108,7 +108,7 @@ class ResNeStBlock(nn.Module):
         if self.strides != (1, 1):
             x = nn.avg_pool(x, (2, 2), strides=(2, 2), padding='SAME')
         if x.shape[-1] != main_shape[-1]:
-            x = self.conv_layer_cls(main_shape[-1], (1, 1),
+            x = self.conv_block_cls(main_shape[-1], (1, 1),
                                     activation=lambda y: y)(x, train=train)
         return x
 
@@ -117,7 +117,7 @@ class ResNeStBlock(nn.Module):
         n_filters = self.n_hidden * 4
         group_width = int(self.n_hidden * (self.bottleneck_width / 64.)) * self.groups
 
-        y = self.conv_layer_cls(group_width, kernel_size=(1, 1))(x, train=train)
+        y = self.conv_block_cls(group_width, kernel_size=(1, 1))(x, train=train)
 
         if self.strides != (1, 1) and self.avg_pool_first:
             y = nn.avg_pool(y, (3, 3), strides=self.strides, padding=[(1, 1), (1, 1)])
@@ -132,7 +132,7 @@ class ResNeStBlock(nn.Module):
         if self.strides != (1, 1) and not self.avg_pool_first:
             y = nn.avg_pool(y, (3, 3), strides=self.strides, padding=[(1, 1), (1, 1)])
 
-        y = self.conv_layer_cls(n_filters, kernel_size=(1, 1),
+        y = self.conv_block_cls(n_filters, kernel_size=(1, 1),
                                 is_last=True)(y, train=train)
 
         return self.activation(y + self.residual(x, y.shape, train=train))
@@ -143,12 +143,12 @@ class ResNet(nn.Module):
     stage_sizes: Sequence[int]
     n_classes: int
 
-    conv_layer_cls: ModuleDef = ConvBlock
+    conv_block_cls: ModuleDef = ConvBlock
     stem_cls: ModuleDef = ResNetStem
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        x = self.stem_cls(self.conv_layer_cls)(x, train=train)
+        x = self.stem_cls(self.conv_block_cls)(x, train=train)
         x = nn.max_pool(x, window_shape=(3, 3), strides=(2, 2), padding='SAME')
 
         filters_list = [64, 128, 256, 512]
