@@ -20,12 +20,10 @@ pip install --upgrade git+https://github.com/n2cholas/jax-resnet.git
 Done:
 
 - [x] Verified intermediate shapes and parameter counts for ResNet, ResNet-D,
-  and SplAtConv2d.
-- [x] Verified parameter count for ResNeSt and ResNeSt-Fast.
+  SplAtConv2d, ResNeSt, and ResNeSt-Fast.
 
 To-Do:
 
-- [ ] Verify ResNeSt and ResNeSt-Fast intermediate shapes.
 - [ ] Train all three models on ImageNet + release checkpoints
 - [ ] ...probably lots more.
 

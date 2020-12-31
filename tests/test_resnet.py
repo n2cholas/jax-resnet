@@ -48,14 +48,14 @@ def test_resnetd_param_count(size):
 
 @pytest.mark.parametrize('size', [50])
 def test_resnest_param_count(size):
-    block_cls = partial(ResNeStBlock,
+    block_cls = partial(ResNeStBottleneckBlock,
                         splat_cls=partial(SplAtConv2d, match_reference=True))
     model = eval(f'ResNeSt{size}')(n_classes=1000, block_cls=block_cls)
     assert n_params(model) == RESNEST_PARAM_COUNTS[size]
 
 
 def test_resnest_fast_param_count():
-    block_cls = partial(ResNeStBlock,
+    block_cls = partial(ResNeStBottleneckBlock,
                         splat_cls=partial(SplAtConv2d, match_reference=True))
     model = ResNeSt50Fast(n_classes=1000, block_cls=block_cls)
     # From github.com/zhanghang1989/ResNeSt/blob/master/resnest/torch/ablation.py#L48
