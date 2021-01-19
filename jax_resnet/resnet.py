@@ -174,12 +174,10 @@ class ResNet(nn.Module):
         x = self.stem_cls(self.conv_block_cls)(x, train=train)
         x = nn.max_pool(x, window_shape=(3, 3), strides=(2, 2), padding='SAME')
 
-        filters_list = [64, 128, 256, 512]
-        assert len(filters_list) == len(self.stage_sizes)
-        for i, (n_filters, n_blocks) in enumerate(zip(filters_list, self.stage_sizes)):
+        for i, n_blocks in enumerate(self.stage_sizes):
             for b in range(n_blocks):
                 strides = (1, 1) if i == 0 or b != 0 else (2, 2)
-                x = self.block_cls(n_hidden=n_filters, strides=strides)(x, train=train)
+                x = self.block_cls(n_hidden=2**(i + 6), strides=strides)(x, train=train)
 
         x = x.mean((-2, -3))  # global average pool
         return nn.Dense(self.n_classes)(x)
