@@ -28,6 +28,7 @@ The model is unit-tested to have the same intermediate outputs as the official
 this, ensure you have PyTorch installed, then:
 
 ```python
+import jax.numpy as jnp
 from jax_resnet import pretrained_resnest
 
 ResNeSt50, variables = pretrained_resnest(50)
