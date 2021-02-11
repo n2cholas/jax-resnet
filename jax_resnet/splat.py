@@ -20,7 +20,7 @@ class SplAtConv2d(nn.Module):
     channels: int
     kernel_size: Tuple[int, int]
     strides: Tuple[int, int] = (1, 1)
-    padding: Union[str, Iterable[Tuple[int, int]]] = 'SAME'
+    padding: Union[str, Iterable[Tuple[int, int]]] = ((0, 0), (0, 0))
     groups: int = 1
     radix: int = 2
     reduction_factor: int = 4
