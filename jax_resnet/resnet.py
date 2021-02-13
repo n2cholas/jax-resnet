@@ -194,20 +194,23 @@ class ResNet(nn.Module):
     stem_cls: ModuleDef = ResNetStem
     pool_fn: Callable = partial(nn.max_pool, padding='SAME')
 
+    # The user can disable setup() to customize the ResNet further. For
+    # example, they can make the block_cls and stem_cls use different Conv
+    # classes. By default, the setup() would propogate the top level Conv class
+    # to all the submodules.
+    disable_setup: bool = False
+
     def setup(self):
-        # We update the conv/norm classes in setup instead of __call__ so the
-        # user can customize the ResNet further. For example, they can change
-        # block_cls and stem_cls after initializing to use different types of
-        # Conv layers.
-        self.conv_block_cls = partial(self.conv_block_cls,
-                                      conv_cls=self.conv_cls,
-                                      norm_cls=self.norm_cls)
-        self.stem_cls = partial(self.stem_cls, conv_block_cls=self.conv_block_cls)
-        self.block_cls = partial(self.block_cls, conv_block_cls=self.conv_block_cls)
+        if not self.disable_setup:
+            self.conv_block_cls = partial(self.conv_block_cls,
+                                          conv_cls=self.conv_cls,
+                                          norm_cls=self.norm_cls)
+            self.stem_cls = partial(self.stem_cls, conv_block_cls=self.conv_block_cls)
+            self.block_cls = partial(self.block_cls, conv_block_cls=self.conv_block_cls)
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        x = self.stem_cls()(x, train=train)
+        x = self.stem_cls(conv_block_cls=self.conv_block_cls)(x, train=train)
         x = self.pool_fn(x, window_shape=(3, 3), strides=(2, 2))
 
         for i, n_blocks in enumerate(self.stage_sizes):

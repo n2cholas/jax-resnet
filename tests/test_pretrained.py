@@ -64,12 +64,14 @@ def test_pretrained_resnest_outputs(size):
     conv_block_cls = partial(ConvBlock,
                              conv_cls=jax_tracker(Conv),
                              norm_cls=partial(jax_tracker(BatchNorm), momentum=0.9))
-    stem_cls = stem_cls = partial(jax_tracker(ResNeStStem),
-                                  stem_width=(32 if size == 50 else 64))
+    stem_cls = partial(jax_tracker(ResNeStStem),
+                       conv_block_cls=conv_block_cls,
+                       stem_width=(32 if size == 50 else 64))
     jnet = eval(f'ResNeSt{size}')(n_classes=1000,
                                   block_cls=block_cls,
                                   stem_cls=stem_cls,
-                                  conv_block_cls=conv_block_cls)
+                                  conv_block_cls=conv_block_cls,
+                                  disable_setup=True)
     _, variables = pretrained_resnest(size)
 
     # Load PT Model and register hooks to track intermediate values and shapes
