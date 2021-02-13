@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Sequence, Tuple
+from typing import Callable, Optional, Sequence, Tuple
 
 from flax import linen as nn
 
@@ -117,6 +117,9 @@ class ResNetBottleneckBlock(nn.Module):
     conv_block_cls: ModuleDef = ConvBlock
     skip_cls: ModuleDef = ResNetSkipConnection
 
+    def setup(self):
+        self.skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
+
     @nn.compact
     def __call__(self, x, train: bool = True):
         y = self.conv_block_cls(self.n_hidden, kernel_size=(1, 1))(x, train=train)
@@ -144,6 +147,7 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
     splat_cls: ModuleDef = SplAtConv2d
 
     def setup(self):
+        super().setup()
         # TODO: implement groups != 1 and radix != 2
         assert self.groups == 1
         assert self.radix == 2
@@ -183,13 +187,27 @@ class ResNet(nn.Module):
     stage_sizes: Sequence[int]
     n_classes: int
 
+    conv_cls: ModuleDef = nn.Conv
+    norm_cls: Optional[ModuleDef] = partial(nn.BatchNorm, momentum=0.9)
+
     conv_block_cls: ModuleDef = ConvBlock
     stem_cls: ModuleDef = ResNetStem
     pool_fn: Callable = partial(nn.max_pool, padding='SAME')
 
+    def setup(self):
+        # We update the conv/norm classes in setup instead of __call__ so the
+        # user can customize the ResNet further. For example, they can change
+        # block_cls and stem_cls after initializing to use different types of
+        # Conv layers.
+        self.conv_block_cls = partial(self.conv_block_cls,
+                                      conv_cls=self.conv_cls,
+                                      norm_cls=self.norm_cls)
+        self.stem_cls = partial(self.stem_cls, conv_block_cls=self.conv_block_cls)
+        self.block_cls = partial(self.block_cls, conv_block_cls=self.conv_block_cls)
+
     @nn.compact
     def __call__(self, x, train: bool = True):
-        x = self.stem_cls(self.conv_block_cls)(x, train=train)
+        x = self.stem_cls()(x, train=train)
         x = self.pool_fn(x, window_shape=(3, 3), strides=(2, 2))
 
         for i, n_blocks in enumerate(self.stage_sizes):
