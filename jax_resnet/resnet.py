@@ -89,7 +89,6 @@ class ResNeStSkipConnection(nn.Module):
             x = nn.avg_pool(x, (2, 2), strides=(2, 2), padding=((0, 0), (0, 0)))
         if x.shape[-1] != out_shape[-1]:
             x = self.conv_block_cls(out_shape[-1], (1, 1),
-                                    padding=((0, 0), (0, 0)),
                                     activation=lambda y: y)(x, train=train)
         return x
 
@@ -123,7 +122,9 @@ class ResNetBottleneckBlock(nn.Module):
     @nn.compact
     def __call__(self, x, train: bool = True):
         y = self.conv_block_cls(self.n_hidden, kernel_size=(1, 1))(x, train=train)
-        y = self.conv_block_cls(self.n_hidden, strides=self.strides)(y, train=train)
+        y = self.conv_block_cls(self.n_hidden,
+                                strides=self.strides,
+                                padding=((1, 1), (1, 1)))(y, train=train)
         y = self.conv_block_cls(self.n_hidden * 4, kernel_size=(1, 1),
                                 is_last=True)(y, train=train)
         return self.activation(y + self.skip_cls(self.strides)(x, y.shape, train=train))
@@ -157,9 +158,7 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
         n_filters = self.n_hidden * 4
         group_width = int(self.n_hidden * (self.bottleneck_width / 64.)) * self.groups
 
-        y = self.conv_block_cls(group_width,
-                                kernel_size=(1, 1),
-                                padding=((0, 0), (0, 0)))(x, train=train)
+        y = self.conv_block_cls(group_width, kernel_size=(1, 1))(x, train=train)
 
         if self.strides != (1, 1) and self.avg_pool_first:
             y = nn.avg_pool(y, (3, 3), strides=self.strides, padding=[(1, 1), (1, 1)])
@@ -174,9 +173,7 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
         if self.strides != (1, 1) and not self.avg_pool_first:
             y = nn.avg_pool(y, (3, 3), strides=self.strides, padding=[(1, 1), (1, 1)])
 
-        y = self.conv_block_cls(n_filters,
-                                kernel_size=(1, 1),
-                                padding=((0, 0), (0, 0)),
+        y = self.conv_block_cls(n_filters, kernel_size=(1, 1),
                                 is_last=True)(y, train=train)
 
         return self.activation(y + self.skip_cls(self.strides)(x, y.shape, train=train))
@@ -192,7 +189,10 @@ class ResNet(nn.Module):
 
     conv_block_cls: ModuleDef = ConvBlock
     stem_cls: ModuleDef = ResNetStem
-    pool_fn: Callable = partial(nn.max_pool, padding='SAME')
+    pool_fn: Callable = partial(nn.max_pool,
+                                window_shape=(3, 3),
+                                strides=(2, 2),
+                                padding=((1, 1), (1, 1)))
 
     # The user can disable setup() to customize the ResNet further. For
     # example, they can make the block_cls and stem_cls use different Conv
@@ -211,7 +211,7 @@ class ResNet(nn.Module):
     @nn.compact
     def __call__(self, x, train: bool = True):
         x = self.stem_cls(conv_block_cls=self.conv_block_cls)(x, train=train)
-        x = self.pool_fn(x, window_shape=(3, 3), strides=(2, 2))
+        x = self.pool_fn(x)
 
         for i, n_blocks in enumerate(self.stage_sizes):
             for b in range(n_blocks):
@@ -251,21 +251,15 @@ ResNetD200 = partial(ResNet, stage_sizes=STAGE_SIZES[200],
 
 ResNeSt50Fast = partial(ResNet, stage_sizes=STAGE_SIZES[50],
                         stem_cls=partial(ResNeStStem, stem_width=32),
-                        block_cls=partial(ResNeStBottleneckBlock, avg_pool_first=True),
-                        pool_fn=partial(nn.max_pool, padding=((1, 1), (1, 1))))
+                        block_cls=partial(ResNeStBottleneckBlock, avg_pool_first=True))
 ResNeSt50 = partial(ResNet, stage_sizes=STAGE_SIZES[50],
                     stem_cls=partial(ResNeStStem, stem_width=32),
-                    block_cls=ResNeStBottleneckBlock,
-                    pool_fn=partial(nn.max_pool, padding=((1, 1), (1, 1))))
+                    block_cls=ResNeStBottleneckBlock)
 ResNeSt101 = partial(ResNet, stage_sizes=STAGE_SIZES[101],
-                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock,
-                     pool_fn=partial(nn.max_pool, padding=((1, 1), (1, 1))))
+                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock)
 ResNeSt152 = partial(ResNet, stage_sizes=STAGE_SIZES[152],
-                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock,
-                     pool_fn=partial(nn.max_pool, padding=((1, 1), (1, 1))))
+                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock)
 ResNeSt200 = partial(ResNet, stage_sizes=STAGE_SIZES[200],
-                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock,
-                     pool_fn=partial(nn.max_pool, padding=((1, 1), (1, 1))))
+                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock)
 ResNeSt269 = partial(ResNet, stage_sizes=STAGE_SIZES[269],
-                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock,
-                     pool_fn=partial(nn.max_pool, padding=((1, 1), (1, 1))))
+                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock)

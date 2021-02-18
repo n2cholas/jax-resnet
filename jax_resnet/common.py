@@ -11,7 +11,7 @@ class ConvBlock(nn.Module):
     kernel_size: Tuple[int, int] = (3, 3)
     strides: Tuple[int, int] = (1, 1)
     activation: Callable = nn.relu
-    padding: Union[str, Iterable[Tuple[int, int]]] = 'SAME'
+    padding: Union[str, Iterable[Tuple[int, int]]] = ((0, 0), (0, 0))
     is_last: bool = False
     groups: int = 1
 

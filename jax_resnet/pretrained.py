@@ -2,10 +2,83 @@ from functools import partial
 from typing import Mapping, Tuple
 
 from flax.core import freeze
+from flax.traverse_util import unflatten_dict
 
 from . import resnet
 from .common import ModuleDef
 from .splat import SplAtConv2d
+
+
+def pretrained_resnet(size: int) -> Tuple[ModuleDef, Mapping]:
+    '''Returns returns variables for ResNest from torch.hub.
+
+    Args:
+        size: 50, 101 or 152.
+
+    Returns:
+        Module Class and variables dictionary for Flax ResNet.
+    '''
+    try:
+        import torch
+    except ImportError:
+        raise ImportError('Install `torch` to use this function.')
+
+    if size not in (50, 101, 152):
+        raise ValueError('Ensure size is one of (50, 101, 200, 269)')
+
+    pt2jax = {}
+    state_dict = torch.hub.load('pytorch/vision:v0.6.0',
+                                f'resnet{size}',
+                                pretrained=True).state_dict()
+
+    def add_bn(pt_bn, jax_prefix):
+        pt2jax[f'{pt_bn}.weight'] = ('params',) + jax_prefix + ('scale',)
+        pt2jax[f'{pt_bn}.bias'] = ('params',) + jax_prefix + ('bias',)
+        pt2jax[f'{pt_bn}.running_mean'] = ('batch_stats',) + jax_prefix + ('mean',)
+        pt2jax[f'{pt_bn}.running_var'] = ('batch_stats',) + jax_prefix + ('var',)
+
+    def bot(num):
+        return f'ResNetBottleneckBlock_{num}'
+
+    pt2jax['conv1.weight'] = ('params', 'ResNetStem_0', 'ConvBlock_0', 'Conv_0',
+                              'kernel')
+    add_bn('bn1', ('ResNetStem_0', 'ConvBlock_0', 'BatchNorm_0'))
+
+    b_ind = 0  # block_ind
+    for b, n_blocks in enumerate(resnet.STAGE_SIZES[size], 1):
+        for i in range(n_blocks):
+            for j in range(3):
+                pt2jax[f'layer{b}.{i}.conv{j+1}.weight'] = ('params', bot(b_ind),
+                                                            f'ConvBlock_{j}', 'Conv_0',
+                                                            'kernel')
+                add_bn(f'layer{b}.{i}.bn{j+1}',
+                       (bot(b_ind), f'ConvBlock_{j}', 'BatchNorm_0'))
+
+            if f'layer{b}.{i}.downsample.0.weight' in state_dict:
+                pt2jax[f'layer{b}.{i}.downsample.0.weight'] = ('params', bot(b_ind),
+                                                               'ResNetSkipConnection_0',
+                                                               'ConvBlock_0', 'Conv_0',
+                                                               'kernel')
+                add_bn(f'layer{b}.{i}.downsample.1',
+                       (bot(b_ind), 'ResNetSkipConnection_0', 'ConvBlock_0',
+                        'BatchNorm_0'))
+
+            b_ind += 1
+
+    pt2jax['fc.weight'] = ('params', 'Dense_0', 'kernel')
+    pt2jax['fc.bias'] = ('params', 'Dense_0', 'bias')
+
+    variables = {}
+    for pt_name, jax_key in pt2jax.items():
+        w = state_dict[pt_name].numpy()
+        if w.ndim == 4:
+            w = w.transpose((2, 3, 1, 0))
+        elif pt_name == 'fc.weight':
+            w = w.transpose()
+        variables[jax_key] = w
+
+    model_cls = partial(getattr(resnet, f'ResNet{size}'), n_classes=1000)
+    return model_cls, freeze(unflatten_dict(variables))
 
 
 def pretrained_resnest(size: int) -> Tuple[ModuleDef, Mapping]:
