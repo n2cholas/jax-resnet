@@ -81,8 +81,7 @@ def test_pretrained_resnet_activations(size):
     stem_cls = partial(jtracker(ResNetStem), conv_block_cls=conv_block_cls)
     jnet = eval(f'ResNet{size}')(n_classes=1000,
                                  block_cls=jtracker(ResNetBottleneckBlock),
-                                 stem_cls=stem_cls,
-                                 disable_setup=True)
+                                 stem_cls=stem_cls)
     _, variables = pretrained_resnet(size)
     pnet = torch.hub.load('pytorch/vision:v0.6.0', f'resnet{size}',
                           pretrained=True).eval()
@@ -163,8 +162,7 @@ def test_pretrained_resnest_activations(size):
     jnet = eval(f'ResNeSt{size}')(n_classes=1000,
                                   block_cls=block_cls,
                                   stem_cls=stem_cls,
-                                  conv_block_cls=conv_block_cls,
-                                  disable_setup=True)
+                                  conv_block_cls=conv_block_cls)
     _, variables = pretrained_resnest(size)
 
     # Load PT Model and register hooks to track intermediate values and shapes

@@ -120,9 +120,6 @@ class ResNetBottleneckBlock(nn.Module):
     conv_block_cls: ModuleDef = ConvBlock
     skip_cls: ModuleDef = ResNetSkipConnection
 
-    def setup(self):
-        self.skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
-
     @nn.compact
     def __call__(self, x, train: bool = True):
         y = self.conv_block_cls(self.n_hidden, kernel_size=(1, 1))(x, train=train)
@@ -151,14 +148,12 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
 
     splat_cls: ModuleDef = SplAtConv2d
 
-    def setup(self):
-        super().setup()
+    @nn.compact
+    def __call__(self, x, train: bool = True):
         # TODO: implement groups != 1 and radix != 2
         assert self.groups == 1
         assert self.radix == 2
 
-    @nn.compact
-    def __call__(self, x, train: bool = True):
         n_filters = self.n_hidden * 4
         group_width = int(self.n_hidden * (self.bottleneck_width / 64.)) * self.groups
 
@@ -198,29 +193,32 @@ class ResNet(nn.Module):
                                 strides=(2, 2),
                                 padding=((1, 1), (1, 1)))
 
-    # The user can disable setup() to customize the ResNet further. For
-    # example, they can make the block_cls and stem_cls use different Conv
-    # classes. By default, the setup() would propogate the top level Conv class
-    # to all the submodules.
-    disable_setup: bool = False
-
-    def setup(self):
-        if not self.disable_setup:
-            self.conv_block_cls = partial(self.conv_block_cls,
-                                          conv_cls=self.conv_cls,
-                                          norm_cls=self.norm_cls)
-            self.stem_cls = partial(self.stem_cls, conv_block_cls=self.conv_block_cls)
-            self.block_cls = partial(self.block_cls, conv_block_cls=self.conv_block_cls)
+    # When True, the model will propogate the top-level conv_cls and norm_cls
+    # through the conv_block_cls to all the submodules (stem, bottleneck, etc).
+    consistent_conv_block: bool = False
+    backbone_only: bool = False  # When True, no GlobalAveragePool or Dense
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        x = self.stem_cls(conv_block_cls=self.conv_block_cls)(x, train=train)
+        conv_block_cls = partial(self.conv_block_cls,
+                                 conv_cls=self.conv_cls,
+                                 norm_cls=self.norm_cls)
+        stem_cls, block_cls = self.stem_cls, self.block_cls
+        if self.consistent_conv_block:
+            stem_cls = partial(stem_cls, conv_block_cls=conv_block_cls)
+            # TODO: set conv_block_cls for skip_cls
+            block_cls = partial(block_cls, conv_block_cls=conv_block_cls)
+
+        x = stem_cls()(x, train=train)
         x = self.pool_fn(x)
 
         for i, n_blocks in enumerate(self.stage_sizes):
             for b in range(n_blocks):
                 strides = (1, 1) if i == 0 or b != 0 else (2, 2)
-                x = self.block_cls(n_hidden=2**(i + 6), strides=strides)(x, train=train)
+                x = block_cls(n_hidden=2**(i + 6), strides=strides)(x, train=train)
+
+        if self.backbone_only:
+            return x
 
         x = x.mean((-2, -3))  # global average pool
         return nn.Dense(self.n_classes)(x)

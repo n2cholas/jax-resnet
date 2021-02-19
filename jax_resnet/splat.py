@@ -32,17 +32,17 @@ class SplAtConv2d(nn.Module):
     # github.com/zhanghang1989/ResNeSt/blob/master/resnest/torch/splat.py#L39
     match_reference: bool = False
 
-    def setup(self):
-        self.conv_cls = self.conv_block_cls.conv_cls
-
     @nn.compact
     def __call__(self, x, train: bool = True):
         inter_channels = max(x.shape[-1] * self.radix // self.reduction_factor, 32)
-        x = self.conv_block_cls(self.channels * self.radix,
-                                kernel_size=self.kernel_size,
-                                strides=self.strides,
-                                groups=self.groups * self.radix,
-                                padding=self.padding)(x, train=train)
+
+        conv_block = self.conv_block_cls(self.channels * self.radix,
+                                         kernel_size=self.kernel_size,
+                                         strides=self.strides,
+                                         groups=self.groups * self.radix,
+                                         padding=self.padding)
+        conv_cls = conv_block.conv_cls  # type: ignore
+        x = conv_block(x, train=train)
 
         if self.radix > 1:
             # torch split takes split_size: int(rchannel//self.radix)
@@ -62,9 +62,9 @@ class SplAtConv2d(nn.Module):
                                   force_conv_bias=self.match_reference)(gap,
                                                                         train=train)
 
-        attn = self.conv_cls(self.channels * self.radix,
-                             kernel_size=(1, 1),
-                             feature_group_count=self.cardinality)(gap)  # n x 1 x 1 x c
+        attn = conv_cls(self.channels * self.radix,
+                        kernel_size=(1, 1),
+                        feature_group_count=self.cardinality)(gap)  # n x 1 x 1 x c
         attn = attn.reshape((x.shape[0], -1))
         attn = rsoftmax(attn, self.radix, self.cardinality)
         attn = attn.reshape((x.shape[0], 1, 1, -1))
