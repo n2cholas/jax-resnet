@@ -30,26 +30,25 @@ class ResNetStem(nn.Module):
 
 class ResNetDStem(nn.Module):
     conv_block_cls: ModuleDef = ConvBlock
+    stem_width: int = 32
 
-    @nn.compact
-    def __call__(self, x, train: bool = True):
-        cls = partial(self.conv_block_cls, padding=((1, 1), (1, 1)))
-        x = cls((x.shape[-1] + 1) * 8, strides=(2, 2))(x, train=train)
-        x = cls(32)(x, train=train)
-        x = cls(64)(x, train=train)
-        return x
-
-
-class ResNeStStem(nn.Module):
-    conv_block_cls: ModuleDef = ConvBlock
-    stem_width: int = 64
+    # If True, n_filters for first conv is (input_channels + 1) * 8
+    adaptive_first_width: bool = True  # TODO: Find better name.
 
     @nn.compact
     def __call__(self, x, train: bool = True):
         cls = partial(self.conv_block_cls, kernel_size=(3, 3), padding=((1, 1), (1, 1)))
-        x = cls(self.stem_width, strides=(2, 2))(x, train=train)
+        first_width = (8 * (x.shape[-1] + 1)
+                       if self.adaptive_first_width else self.stem_width)
+        x = cls(first_width, strides=(2, 2))(x, train=train)
         x = cls(self.stem_width, strides=(1, 1))(x, train=train)
-        return cls(self.stem_width * 2, strides=(1, 1))(x, train=train)
+        x = cls(self.stem_width * 2, strides=(1, 1))(x, train=train)
+        return x
+
+
+class ResNeStStem(ResNetDStem):
+    stem_width: int = 64  # TODO: make this the same as ResNetD?
+    adaptive_first_width: bool = False
 
 
 class ResNetSkipConnection(nn.Module):
@@ -80,18 +79,9 @@ class ResNetDSkipConnection(nn.Module):
         return x
 
 
-class ResNeStSkipConnection(nn.Module):
-    strides: Tuple[int, int]
-    conv_block_cls: ModuleDef = ConvBlock
-
-    @nn.compact
-    def __call__(self, x, out_shape, train: bool = True):
-        if self.strides != (1, 1):
-            x = nn.avg_pool(x, (2, 2), strides=(2, 2), padding=((0, 0), (0, 0)))
-        if x.shape[-1] != out_shape[-1]:
-            x = self.conv_block_cls(out_shape[-1], (1, 1),
-                                    activation=lambda y: y)(x, train=train)
-        return x
+class ResNeStSkipConnection(ResNetDSkipConnection):
+    # Inheritance to ensures our variables dict has the right names.
+    pass
 
 
 class ResNetBlock(nn.Module):
