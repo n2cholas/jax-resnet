@@ -80,8 +80,8 @@ def pretrained_resnetd(size: int) -> Tuple[ModuleDef, Mapping]:
         Module Class and variables dictionary for Flax ResNetD.
     """
     warnings.warn('This pretrained model\'s activations do not match the FastAI '
-                  'reference implementation _exactly_. Ensure you verify that the '
-                  'accuracy is sufficient for your use case.')
+                  'reference implementation _exactly_. The model should still be '
+                  'fine for transfer learning.')
     try:
         from fastai.vision.models.xresnet import xresnet50
     except ImportError:
