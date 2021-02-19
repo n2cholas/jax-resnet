@@ -13,7 +13,7 @@ def rsoftmax(x, radix, cardinality):
         x = x.reshape((batch, cardinality, radix, -1)).swapaxes(1, 2)
         return nn.softmax(x, axis=1).reshape((batch, -1))
     else:
-        return nn.sigmid(x)
+        return nn.sigmoid(x)
 
 
 class SplAtConv2d(nn.Module):
