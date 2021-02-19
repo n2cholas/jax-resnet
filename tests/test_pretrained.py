@@ -101,59 +101,51 @@ def test_pretrained_resnet_activations(size):
     np.testing.assert_allclose(jout, pout, atol=0.0001)
 
 
-# @pytest.mark.parametrize('size', [50, 101, 200, 269])
-# def test_pretrained_resnest_outputs(size):
-#     jtracker = JaxModuleTracker()
-#     ptracker = PTModuleTracker()
-#     jax2pt_names = {  # Layer Name conversions
-#         'BatchNorm': 'BatchNorm2d',
-#         'ResNeStBottleneckBlock': 'Bottleneck',
-#         'SplAtConv2d': 'SplAtConv2d',
-#         'Conv': 'Conv2d',
-#         'ResNeStStem': 'ReLU',
-#     }
+@pytest.mark.parametrize('size', [50, 101, 200, 269])
+def test_pretrained_resnest_activations(size):
+    jtracker = JaxModuleTracker()
+    ptracker = PTModuleTracker()
+    jax2pt_names = {  # Layer Name conversions
+        'ResNeStBottleneckBlock': 'Bottleneck',
+        'SplAtConv2d': 'SplAtConv2d',
+        'Conv': 'Conv2d',
+        'ResNeStStem': 'ReLU',
+    }
 
-#     # Create JAX Model and track all the modules
-#     block_cls = partial(jtracker(ResNeStBottleneckBlock),
-#                         splat_cls=partial(jtracker(SplAtConv2d),
-#                                           match_reference=True))
-#     conv_block_cls = partial(ConvBlock,
-#                              conv_cls=jtracker(Conv),
-#                              norm_cls=partial(jtracker(BatchNorm), momentum=0.9))
-#     stem_cls = partial(jtracker(ResNeStStem),
-#                        conv_block_cls=conv_block_cls,
-#                        stem_width=(32 if size == 50 else 64))
-#     jnet = eval(f'ResNeSt{size}')(n_classes=1000,
-#                                   block_cls=block_cls,
-#                                   stem_cls=stem_cls,
-#                                   conv_block_cls=conv_block_cls,
-#                                   disable_setup=True)
-#     _, variables = pretrained_resnest(size)
+    # Create JAX Model and track all the modules
+    block_cls = partial(jtracker(ResNeStBottleneckBlock),
+                        splat_cls=partial(jtracker(SplAtConv2d), match_reference=True))
+    conv_block_cls = partial(ConvBlock, conv_cls=jtracker(Conv))
+    stem_cls = partial(jtracker(ResNeStStem),
+                       conv_block_cls=conv_block_cls,
+                       stem_width=(32 if size == 50 else 64))
+    jnet = eval(f'ResNeSt{size}')(n_classes=1000,
+                                  block_cls=block_cls,
+                                  stem_cls=stem_cls,
+                                  conv_block_cls=conv_block_cls,
+                                  disable_setup=True)
+    _, variables = pretrained_resnest(size)
 
-#     # Load PT Model and register hooks to track intermediate values and shapes
-#     pnet = torch.hub.load('zhanghang1989/ResNeSt', f'resnest{size}',
-#                           pretrained=True).eval()
+    # Load PT Model and register hooks to track intermediate values and shapes
+    pnet = torch.hub.load('zhanghang1989/ResNeSt', f'resnest{size}',
+                          pretrained=True).eval()
 
-#     for layer in [pnet.layer1, pnet.layer2, pnet.layer3, pnet.layer4]:
-#         for bottleneck in layer:
-#             bottleneck.conv2.register_forward_hook(ptracker)  # SplAt2d
-#             bottleneck.register_forward_hook(ptracker)  # Bottleneck
+    for layer in [pnet.layer1, pnet.layer2, pnet.layer3, pnet.layer4]:
+        for bottleneck in layer:
+            bottleneck.conv2.register_forward_hook(ptracker)  # SplAt2d
+            bottleneck.register_forward_hook(ptracker)  # Bottleneck
 
-#     pnet.conv1[0].register_forward_hook(ptracker)  # Stem Conv
-#     pnet.conv1[1].register_forward_hook(ptracker)  # Stem BatchNorm
-#     pnet.conv1[3].register_forward_hook(ptracker)  # Stem Conv
-#     pnet.conv1[4].register_forward_hook(ptracker)  # Stem BatchNorm
-#     pnet.conv1[6].register_forward_hook(ptracker)  # Stem Conv
-#     pnet.bn1.register_forward_hook(ptracker)  # Stem BatchNorm
-#     pnet.relu.register_forward_hook(ptracker)  # Stem Output
+    pnet.conv1[0].register_forward_hook(ptracker)  # Stem Conv
+    pnet.conv1[3].register_forward_hook(ptracker)  # Stem Conv
+    pnet.conv1[6].register_forward_hook(ptracker)  # Stem Conv
+    pnet.relu.register_forward_hook(ptracker)  # Stem Output
 
-#     jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)),
-#                       mutable=False, train=False)
-#     with torch.no_grad():
-#         pout = pnet(torch.ones((1, 3, 224, 224))).numpy()
+    jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)), mutable=False, train=False)
+    with torch.no_grad():
+        pout = pnet(torch.ones((1, 3, 224, 224))).numpy()
 
-#     # Ensure outputs and shapes all match
-#     for jkey, pkey in jax2pt_names.items():
-#         for jact, pact in zip(jtracker.outputs[jkey], ptracker.outputs[pkey]):
-#             np.testing.assert_allclose(jact, pact, atol=0.1)
-#     np.testing.assert_allclose(jout, pout, atol=0.01)
+    # Ensure outputs and shapes all match
+    for jkey, pkey in jax2pt_names.items():
+        for jact, pact in zip(jtracker.outputs[jkey], ptracker.outputs[pkey]):
+            np.testing.assert_allclose(jact, pact, atol=0.1)
+    np.testing.assert_allclose(jout, pout, atol=0.01)

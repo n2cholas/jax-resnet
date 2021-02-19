@@ -18,14 +18,19 @@ pip install --upgrade git+https://github.com/n2cholas/jax-resnet.git
 ## Usage
 
 See the bottom of `jax-resnet/resnet.py` for the available aliases for the
-ResNet variants (all models are built using
-[Flax](https://github.com/google/flax))
+ResNet variants (all models are in [Flax](https://github.com/google/flax))
 
-For ResNeSt[50, 101, 200, 269], this library can load pretrained imagenet
-weights from [`torch.hub`](https://pytorch.org/hub/pytorch_vision_resnest/).
-The model is unit-tested to have the same intermediate activations as the
-official [PyTorch implementation](https://github.com/zhanghang1989/ResNeSt). To
-use this, ensure you have PyTorch installed, then:
+Pretrained checkpoints from
+[`torch.hub`](https://pytorch.org/docs/stable/hub.html) are available for the
+following networks:
+
+- ResNeSt[50, 101, 200, 269]
+- ResNet[50, 101, 152]
+
+The models are
+[tested](https://github.com/n2cholas/jax-resnet/blob/main/tests/test_pretrained.py)
+to have the same intermediate activations and outputs as the `torch.hub`
+implementations.
 
 ```python
 import jax.numpy as jnp
