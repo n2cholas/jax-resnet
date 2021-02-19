@@ -1,5 +1,6 @@
 jax
 jaxlib
+fastai
 flax
 flake8
 pytest

@@ -1,3 +1,4 @@
+import warnings
 from functools import partial
 from typing import Dict, Mapping, Sequence, Tuple
 
@@ -10,14 +11,14 @@ from .splat import SplAtConv2d
 
 
 def pretrained_resnet(size: int) -> Tuple[ModuleDef, Mapping]:
-    '''Returns returns variables for ResNest from torch.hub.
+    """Returns returns variables for ResNest from torch.hub.
 
     Args:
         size: 50, 101 or 152.
 
     Returns:
         Module Class and variables dictionary for Flax ResNet.
-    '''
+    """
     try:
         import torch
     except ImportError:
@@ -69,15 +70,77 @@ def pretrained_resnet(size: int) -> Tuple[ModuleDef, Mapping]:
     return model_cls, freeze(unflatten_dict(variables))
 
 
+def pretrained_resnetd(size: int) -> Tuple[ModuleDef, Mapping]:
+    """Returns returns variables for ResNet from fastai.
+
+    Args:
+        size: 50.
+
+    Returns:
+        Module Class and variables dictionary for Flax ResNetD.
+    """
+    warnings.warn('This pretrained model\'s activations do not match the FastAI '
+                  'reference implementation. Verify that the accuracy is sufficient '
+                  'for your use case.')
+    try:
+        from fastai.vision.models.xresnet import xresnet50
+    except ImportError:
+        raise ImportError('Install `fastai>=2.2` to use this function.')
+
+    if size != 50:
+        raise ValueError('Ensure size is 50')
+
+    try:
+        state_dict = xresnet50(pretrained=True).state_dict()
+    except Exception:
+        raise RuntimeError('Failed to load pretrained PyTorch model. '
+                           'Upgrade to `fastai>=2.2`')
+
+    pt2jax: Dict[str, Sequence[str]] = {}
+    add_bn = _get_add_bn(pt2jax)
+
+    def add_convblock(pt_layer, jax_layer):
+        pt2jax[f'{pt_layer}.0.weight'] = ('params', *jax_layer, 'Conv_0', 'kernel')
+        add_bn(f'{pt_layer}.1', (*jax_layer, 'BatchNorm_0'))
+
+    def bname(num):
+        return f'ResNetDBottleneckBlock_{num}'
+
+    for i in range(3):
+        add_convblock(i, ('ResNetDStem_0', f'ConvBlock_{i}'))
+
+    b_ind = 0  # block_ind
+    for b, n_blocks in enumerate(resnet.STAGE_SIZES[size], 4):
+        for i in range(n_blocks):
+            for j in range(3):
+                add_convblock(f'{b}.{i}.convpath.{j}', (bname(b_ind), f'ConvBlock_{j}'))
+
+            if f'{b}.{i}.idpath.0.0.weight' in state_dict:  # no average pool
+                add_convblock(f'{b}.{i}.idpath.0',
+                              (bname(b_ind), 'ResNetDSkipConnection_0', 'ConvBlock_0'))
+            elif f'{b}.{i}.idpath.1.0.weight' in state_dict:  # with average pool
+                add_convblock(f'{b}.{i}.idpath.1',
+                              (bname(b_ind), 'ResNetDSkipConnection_0', 'ConvBlock_0'))
+
+            b_ind += 1
+
+    pt2jax['11.weight'] = ('params', 'Dense_0', 'kernel')
+    pt2jax['11.bias'] = ('params', 'Dense_0', 'bias')
+
+    variables = _pytorch_to_jax_params(pt2jax, state_dict, ('11.weight',))
+    model_cls = partial(getattr(resnet, f'ResNetD{size}'), n_classes=1000)
+    return model_cls, freeze(unflatten_dict(variables))
+
+
 def pretrained_resnest(size: int) -> Tuple[ModuleDef, Mapping]:
-    '''Returns returns variables for ResNest from torch.hub.
+    """Returns returns variables for ResNest from torch.hub.
 
     Args:
         size: 50, 101, 200, or 269.
 
     Returns:
         Module Class and variables dictionary for Flax ResNeSt.
-    '''
+    """
     try:
         import torch
     except ImportError:
@@ -178,9 +241,9 @@ def _pytorch_to_jax_params(pt2jax, state_dict, fc_keys):
 
 def _get_add_bn(pt2jax):
     def add_bn(pname, jprefix):
-        pt2jax[f'{pname}.weight'] = ('params',) + jprefix + ('scale',)
-        pt2jax[f'{pname}.bias'] = ('params',) + jprefix + ('bias',)
-        pt2jax[f'{pname}.running_mean'] = ('batch_stats',) + jprefix + ('mean',)
-        pt2jax[f'{pname}.running_var'] = ('batch_stats',) + jprefix + ('var',)
+        pt2jax[f'{pname}.weight'] = ('params', *jprefix, 'scale')
+        pt2jax[f'{pname}.bias'] = ('params', *jprefix, 'bias')
+        pt2jax[f'{pname}.running_mean'] = ('batch_stats', *jprefix, 'mean')
+        pt2jax[f'{pname}.running_var'] = ('batch_stats', *jprefix, 'var')
 
     return add_bn

@@ -4,22 +4,22 @@ import pytest
 from jax_resnet import *  # noqa
 
 # github.com/google/flax/blob/master/linen_examples/imagenet/models.py
+# matches https://pytorch.org/hub/pytorch_vision_resnet/
 RESNET_PARAM_COUNTS = {
     18: 11689512,
     34: 21797672,
     50: 25557032,
     101: 44549160,
-    152: 60192808
+    152: 60192808,
 }
 
-# towardsdatascience.com/xresnet-from-scratch-in-pytorch-e64e309af722?gi=18af41e325af
-# TODO: find better source
+# https://docs.fast.ai/vision.models.xresnet.html
 RESNETD_PARAM_COUNTS = {
-    18: 11736456,
-    34: 21844616,
-    50: 25603976,
-    101: 44596104,
-    152: 60239752
+    18: 11708744,
+    34: 21816904,
+    50: 25576264,
+    101: 44568392,
+    152: 60212040,
 }
 
 # github.com/zhanghang1989/ResNeSt (torch version)
@@ -34,19 +34,19 @@ def n_params(model, init_shape=(1, 224, 224, 3)):
                                      jax.tree_util.tree_map(lambda x: x.size, params))
 
 
-@pytest.mark.parametrize('size', [18, 50])
+@pytest.mark.parametrize('size', [18, 34, 50, 101, 152])
 def test_resnet_param_count(size):
     model = eval(f'ResNet{size}')(n_classes=1000)
     assert n_params(model) == RESNET_PARAM_COUNTS[size]
 
 
-@pytest.mark.parametrize('size', [18, 50])
+@pytest.mark.parametrize('size', [18, 34, 50, 101, 152])
 def test_resnetd_param_count(size):
     model = eval(f'ResNetD{size}')(n_classes=1000)
     assert n_params(model) == RESNETD_PARAM_COUNTS[size]
 
 
-@pytest.mark.parametrize('size', [50])
+@pytest.mark.parametrize('size', [50, 101, 200, 269])
 def test_resnest_param_count(size):
     block_cls = partial(ResNeStBottleneckBlock,
                         splat_cls=partial(SplAtConv2d, match_reference=True))

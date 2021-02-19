@@ -33,9 +33,10 @@ class ResNetDStem(nn.Module):
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        x = self.conv_block_cls((x.shape[-1] + 1) * 8, strides=(2, 2))(x, train=train)
-        x = self.conv_block_cls(64, strides=(1, 1))(x, train=train)
-        x = self.conv_block_cls(64, strides=(1, 1))(x, train=train)
+        cls = partial(self.conv_block_cls, padding=((1, 1), (1, 1)))
+        x = cls((x.shape[-1] + 1) * 8, strides=(2, 2))(x, train=train)
+        x = cls(32)(x, train=train)
+        x = cls(64)(x, train=train)
         return x
 
 
@@ -72,7 +73,7 @@ class ResNetDSkipConnection(nn.Module):
     @nn.compact
     def __call__(self, x, out_shape, train: bool = True):
         if self.strides != (1, 1):
-            x = nn.avg_pool(x, (2, 2), strides=(2, 2), padding='SAME')
+            x = nn.avg_pool(x, (2, 2), strides=(2, 2), padding=((0, 0), (0, 0)))
         if x.shape[-1] != out_shape[-1]:
             x = self.conv_block_cls(out_shape[-1], (1, 1),
                                     activation=lambda y: y)(x, train=train)
