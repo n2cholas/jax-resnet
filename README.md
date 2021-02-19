@@ -23,9 +23,9 @@ ResNet variants (all models are built using
 
 For ResNeSt[50, 101, 200, 269], this library can load pretrained imagenet
 weights from [`torch.hub`](https://pytorch.org/hub/pytorch_vision_resnest/).
-The model is unit-tested to have the same intermediate outputs as the official
-[PyTorch implementation](https://github.com/zhanghang1989/ResNeSt). To use
-this, ensure you have PyTorch installed, then:
+The model is unit-tested to have the same intermediate activations as the
+official [PyTorch implementation](https://github.com/zhanghang1989/ResNeSt). To
+use this, ensure you have PyTorch installed, then:
 
 ```python
 import jax.numpy as jnp
@@ -36,20 +36,8 @@ model = ResNeSt50()
 out = model.apply(variables,
                   jnp.ones((32, 224, 224, 3)),  # ImageNet sized inputs.
                   mutable=False,  # Ensure `batch_stats` aren't updated.
-                  train=False)  # Use precomputed mean/var for batchnorm.
+                  train=False)  # Use running mean/var for batchnorm.
 ```
-
-## Progress
-
-Done:
-
-- [x] Verified intermediate outputs and parameter counts for ResNet, ResNet-D,
-  SplAtConv2d, ResNeSt, and ResNeSt-Fast.
-
-To-Do:
-
-- [ ] Train all three models on ImageNet + release checkpoints
-- [ ] ...probably lots more.
 
 ## References
 

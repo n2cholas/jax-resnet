@@ -103,8 +103,11 @@ class ResNetBlock(nn.Module):
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        y = self.conv_block_cls(self.n_hidden, strides=self.strides)(x, train=train)
-        y = self.conv_block_cls(self.n_hidden, is_last=True)(y, train=train)
+        y = self.conv_block_cls(self.n_hidden,
+                                padding=[(1, 1), (1, 1)],
+                                strides=self.strides)(x, train=train)
+        y = self.conv_block_cls(self.n_hidden, padding=[(1, 1), (1, 1)],
+                                is_last=True)(y, train=train)
         return self.activation(y + self.skip_cls(self.strides)(x, y.shape, train=train))
 
 
