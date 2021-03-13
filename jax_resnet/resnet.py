@@ -1,6 +1,7 @@
 from functools import partial
-from typing import Any, Callable, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
 
+import flax
 import jax.numpy as jnp
 from flax import linen as nn
 
@@ -180,8 +181,11 @@ class Sequential(nn.Module):
     @nn.compact
     def __call__(self, x, train: bool = True):
         for layer in self.layers:
-            # TODO: Hacky. Treat train argument more consistently.
-            x = layer(x, train=train) if isinstance(layer, nn.Module) else layer(x)
+            # TODO: Hacky. Treat layers more consistently by removing train?
+            if isinstance(layer, nn.Module) and not isinstance(layer, nn.Dense):
+                x = layer(x, train=train)
+            else:
+                x = layer(x)
         return x
 
 
@@ -211,8 +215,27 @@ def ResNet(
 
     layers.append(partial(jnp.mean, axis=(1, 2)))  # global average pool
     #  TODO: Remove hack block train arg from Dense.
-    layers.append(lambda x: nn.Dense(n_classes)(x))
+    layers.append(nn.Dense(n_classes))
     return Sequential(layers)
+
+
+def slice(resnet: Sequential,
+          variables: Mapping[str, Any],
+          start: int = 0,
+          end: int = -1):
+    """Returns ResNet with a subset of the layers from indices [start, end)."""
+    variables = flax.core.unfreeze(variables)
+    if end < 0:
+        end = max(int(s.split('_')[-1]) for s in variables['params']) + end
+
+    sliced_variables: Dict[str, Any] = {}
+    for k, var_dict in variables.items():  # usually params and batch_stats
+        sliced_variables[k] = {}
+        for i in range(start, end):
+            if f'layers_{i}' in var_dict:
+                sliced_variables[k][f'layers_{i}'] = var_dict[f'layers_{i}']
+
+    return Sequential(resnet.layers[start:end]), flax.core.freeze(sliced_variables)
 
 
 # yapf: disable

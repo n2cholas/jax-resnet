@@ -103,6 +103,18 @@ def test_resnest_stem_param_count():
     assert n_params(ResNeStStem()) == 112832
 
 
+@pytest.mark.parametrize('cls', [ResNet18, ResNeSt50Fast, ResNetD101])
+def test_slice(cls):
+    model = cls(n_classes=1000)
+    init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
+    variables = model.init(jax.random.PRNGKey(0), init_array)
+    model, variables = slice(model, variables, 0, 5)
+    layer_nums = [int(s.split('_')[-1]) for s in variables['params'].keys()]
+    assert max(layer_nums) == 4
+    assert min(layer_nums) == 0
+    assert len(model.layers) == 5
+
+
 # @pytest.mark.parametrize(
 #     'cls', [ResNet18, ResNet50, ResNetD18, ResNetD50, ResNeSt50, ResNeSt50Fast])
 # def test_consistent_convblock(cls):

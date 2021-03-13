@@ -63,8 +63,9 @@ def pretrained_resnet(size: int) -> Tuple[ModuleDef, Mapping]:
 
             b_ind += 1
 
-    pt2jax['fc.weight'] = ('params', 'Dense_0', 'kernel')
-    pt2jax['fc.bias'] = ('params', 'Dense_0', 'bias')
+    b_ind += 1
+    pt2jax['fc.weight'] = ('params', bname(b_ind), 'kernel')
+    pt2jax['fc.bias'] = ('params', bname(b_ind), 'bias')
 
     variables = _pytorch_to_jax_params(pt2jax, state_dict, ('fc.weight',))
     model_cls = partial(getattr(resnet, f'ResNet{size}'), n_classes=1000)
@@ -125,8 +126,9 @@ def pretrained_resnetd(size: int) -> Tuple[ModuleDef, Mapping]:
 
             b_ind += 1
 
-    pt2jax['11.weight'] = ('params', 'Dense_0', 'kernel')
-    pt2jax['11.bias'] = ('params', 'Dense_0', 'bias')
+    b_ind += 1
+    pt2jax['11.weight'] = ('params', bname(b_ind), 'kernel')
+    pt2jax['11.bias'] = ('params', bname(b_ind), 'bias')
 
     variables = _pytorch_to_jax_params(pt2jax, state_dict, ('11.weight',))
     model_cls = partial(getattr(resnet, f'ResNetD{size}'), n_classes=1000)
@@ -211,8 +213,9 @@ def pretrained_resnest(size: int) -> Tuple[ModuleDef, Mapping]:
 
             b_ind += 1
 
-    pt2jax['fc.weight'] = ('params', 'Dense_0', 'kernel')
-    pt2jax['fc.bias'] = ('params', 'Dense_0', 'bias')
+    b_ind += 1
+    pt2jax['fc.weight'] = ('params', bname(b_ind), 'kernel')
+    pt2jax['fc.bias'] = ('params', bname(b_ind), 'bias')
 
     variables = _pytorch_to_jax_params(pt2jax, state_dict, ('fc.weight',))
 
