@@ -37,13 +37,12 @@ def pretrained_resnet(size: int) -> Tuple[ModuleDef, Mapping]:
     add_bn = _get_add_bn(pt2jax)
 
     def bname(num):
-        return f'ResNetBottleneckBlock_{num}'
+        return f'layers_{num}'
 
-    pt2jax['conv1.weight'] = ('params', 'ResNetStem_0', 'ConvBlock_0', 'Conv_0',
-                              'kernel')
-    add_bn('bn1', ('ResNetStem_0', 'ConvBlock_0', 'BatchNorm_0'))
+    pt2jax['conv1.weight'] = ('params', 'layers_0', 'ConvBlock_0', 'Conv_0', 'kernel')
+    add_bn('bn1', ('layers_0', 'ConvBlock_0', 'BatchNorm_0'))
 
-    b_ind = 0  # block_ind
+    b_ind = 2  # block_ind
     for b, n_blocks in enumerate(resnet.STAGE_SIZES[size], 1):
         for i in range(n_blocks):
             for j in range(3):
@@ -106,12 +105,12 @@ def pretrained_resnetd(size: int) -> Tuple[ModuleDef, Mapping]:
         add_bn(f'{pt_layer}.1', (*jax_layer, 'BatchNorm_0'))
 
     def bname(num):
-        return f'ResNetDBottleneckBlock_{num}'
+        return f'layers_{num}'
 
     for i in range(3):
-        add_convblock(i, ('ResNetDStem_0', f'ConvBlock_{i}'))
+        add_convblock(i, ('layers_0', f'ConvBlock_{i}'))
 
-    b_ind = 0  # block_ind
+    b_ind = 2  # block_ind
     for b, n_blocks in enumerate(resnet.STAGE_SIZES[size], 4):
         for i in range(n_blocks):
             for j in range(3):
@@ -159,20 +158,17 @@ def pretrained_resnest(size: int) -> Tuple[ModuleDef, Mapping]:
     add_bn = _get_add_bn(pt2jax)
 
     def bname(num):
-        return f'ResNeStBottleneckBlock_{num}'
+        return f'layers_{num}'
 
     # Stem
-    pt2jax['conv1.0.weight'] = ('params', 'ResNeStStem_0', 'ConvBlock_0', 'Conv_0',
-                                'kernel')
-    add_bn('conv1.1', ('ResNeStStem_0', 'ConvBlock_0', 'BatchNorm_0'))
-    pt2jax['conv1.3.weight'] = ('params', 'ResNeStStem_0', 'ConvBlock_1', 'Conv_0',
-                                'kernel')
-    add_bn('conv1.4', ('ResNeStStem_0', 'ConvBlock_1', 'BatchNorm_0'))
-    pt2jax['conv1.6.weight'] = ('params', 'ResNeStStem_0', 'ConvBlock_2', 'Conv_0',
-                                'kernel')
-    add_bn('bn1', ('ResNeStStem_0', 'ConvBlock_2', 'BatchNorm_0'))
+    pt2jax['conv1.0.weight'] = ('params', 'layers_0', 'ConvBlock_0', 'Conv_0', 'kernel')
+    add_bn('conv1.1', ('layers_0', 'ConvBlock_0', 'BatchNorm_0'))
+    pt2jax['conv1.3.weight'] = ('params', 'layers_0', 'ConvBlock_1', 'Conv_0', 'kernel')
+    add_bn('conv1.4', ('layers_0', 'ConvBlock_1', 'BatchNorm_0'))
+    pt2jax['conv1.6.weight'] = ('params', 'layers_0', 'ConvBlock_2', 'Conv_0', 'kernel')
+    add_bn('bn1', ('layers_0', 'ConvBlock_2', 'BatchNorm_0'))
 
-    b_ind = 0  # block_ind
+    b_ind = 2  # block_ind
     for b, n_blocks in enumerate(resnet.STAGE_SIZES[size], 1):
         for i in range(n_blocks):
             pt2jax[f'layer{b}.{i}.conv1.weight'] = ('params', bname(b_ind),

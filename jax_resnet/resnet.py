@@ -1,10 +1,13 @@
 from functools import partial
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Any, Callable, Optional, Sequence, Tuple, Union
 
+import jax.numpy as jnp
 from flax import linen as nn
 
 from .common import ConvBlock, ModuleDef
 from .splat import SplAtConv2d
+
+Array = Any
 
 STAGE_SIZES = {
     18: [2, 2, 2, 2],
@@ -94,12 +97,13 @@ class ResNetBlock(nn.Module):
 
     @nn.compact
     def __call__(self, x, train: bool = True):
+        skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
         y = self.conv_block_cls(self.n_hidden,
                                 padding=[(1, 1), (1, 1)],
                                 strides=self.strides)(x, train=train)
         y = self.conv_block_cls(self.n_hidden, padding=[(1, 1), (1, 1)],
                                 is_last=True)(y, train=train)
-        return self.activation(y + self.skip_cls(self.strides)(x, y.shape, train=train))
+        return self.activation(y + skip_cls(self.strides)(x, y.shape, train=train))
 
 
 class ResNetBottleneckBlock(nn.Module):
@@ -112,13 +116,14 @@ class ResNetBottleneckBlock(nn.Module):
 
     @nn.compact
     def __call__(self, x, train: bool = True):
+        skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
         y = self.conv_block_cls(self.n_hidden, kernel_size=(1, 1))(x, train=train)
         y = self.conv_block_cls(self.n_hidden,
                                 strides=self.strides,
                                 padding=((1, 1), (1, 1)))(y, train=train)
         y = self.conv_block_cls(self.n_hidden * 4, kernel_size=(1, 1),
                                 is_last=True)(y, train=train)
-        return self.activation(y + self.skip_cls(self.strides)(x, y.shape, train=train))
+        return self.activation(y + skip_cls(self.strides)(x, y.shape, train=train))
 
 
 class ResNetDBlock(ResNetBlock):
@@ -144,6 +149,7 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
         assert self.groups == 1
         assert self.radix == 2
 
+        skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
         n_filters = self.n_hidden * 4
         group_width = int(self.n_hidden * (self.bottleneck_width / 64.)) * self.groups
 
@@ -165,53 +171,48 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
         y = self.conv_block_cls(n_filters, kernel_size=(1, 1),
                                 is_last=True)(y, train=train)
 
-        return self.activation(y + self.skip_cls(self.strides)(x, y.shape, train=train))
+        return self.activation(y + skip_cls(self.strides)(x, y.shape, train=train))
 
 
-class ResNet(nn.Module):
-    block_cls: ModuleDef
-    stage_sizes: Sequence[int]
-    n_classes: int
-
-    conv_cls: ModuleDef = nn.Conv
-    norm_cls: Optional[ModuleDef] = partial(nn.BatchNorm, momentum=0.9)
-
-    conv_block_cls: ModuleDef = ConvBlock
-    stem_cls: ModuleDef = ResNetStem
-    pool_fn: Callable = partial(nn.max_pool,
-                                window_shape=(3, 3),
-                                strides=(2, 2),
-                                padding=((1, 1), (1, 1)))
-
-    # When True, the model will propogate the top-level conv_cls and norm_cls
-    # through the conv_block_cls to all the submodules (stem, bottleneck, etc).
-    consistent_conv_block: bool = False
-    backbone_only: bool = False  # When True, no GlobalAveragePool or Dense
+class Sequential(nn.Module):
+    layers: Sequence[Union[nn.Module, Callable[[Array], Array]]]
 
     @nn.compact
     def __call__(self, x, train: bool = True):
-        conv_block_cls = partial(self.conv_block_cls,
-                                 conv_cls=self.conv_cls,
-                                 norm_cls=self.norm_cls)
-        stem_cls, block_cls = self.stem_cls, self.block_cls
-        if self.consistent_conv_block:
-            stem_cls = partial(stem_cls, conv_block_cls=conv_block_cls)
-            # TODO: set conv_block_cls for skip_cls
-            block_cls = partial(block_cls, conv_block_cls=conv_block_cls)
+        for layer in self.layers:
+            # TODO: Hacky. Treat train argument more consistently.
+            x = layer(x, train=train) if isinstance(layer, nn.Module) else layer(x)
+        return x
 
-        x = stem_cls()(x, train=train)
-        x = self.pool_fn(x)
 
-        for i, n_blocks in enumerate(self.stage_sizes):
-            for b in range(n_blocks):
-                strides = (1, 1) if i == 0 or b != 0 else (2, 2)
-                x = block_cls(n_hidden=2**(i + 6), strides=strides)(x, train=train)
+def ResNet(
+    block_cls: ModuleDef,
+    stage_sizes: Sequence[int],
+    n_classes: int,
+    conv_cls: ModuleDef = nn.Conv,
+    norm_cls: Optional[ModuleDef] = partial(nn.BatchNorm, momentum=0.9),
+    conv_block_cls: ModuleDef = ConvBlock,
+    stem_cls: ModuleDef = ResNetStem,
+    pool_fn: Callable = partial(nn.max_pool,
+                                window_shape=(3, 3),
+                                strides=(2, 2),
+                                padding=((1, 1), (1, 1))),
+):
+    conv_block_cls = partial(conv_block_cls, conv_cls=conv_cls, norm_cls=norm_cls)
+    stem_cls = partial(stem_cls, conv_block_cls=conv_block_cls)
+    block_cls = partial(block_cls, conv_block_cls=conv_block_cls)
 
-        if self.backbone_only:
-            return x
+    layers = [stem_cls(), pool_fn]
 
-        x = x.mean((-2, -3))  # global average pool
-        return nn.Dense(self.n_classes)(x)
+    for i, n_blocks in enumerate(stage_sizes):
+        for b in range(n_blocks):
+            strides = (1, 1) if i == 0 or b != 0 else (2, 2)
+            layers.append(block_cls(n_hidden=2**(i + 6), strides=strides))
+
+    layers.append(partial(jnp.mean, axis=(1, 2)))  # global average pool
+    #  TODO: Remove hack block train arg from Dense.
+    layers.append(lambda x: nn.Dense(n_classes)(x))
+    return Sequential(layers)
 
 
 # yapf: disable
