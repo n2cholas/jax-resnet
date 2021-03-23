@@ -52,7 +52,7 @@ def _test_pretrained(size, pretrained_fn):
                                           pretrained_vars)
     assert jax.tree_util.tree_all(eq_tree)
 
-    out = model.apply(pretrained_vars, arr, mutable=False, train=False)
+    out = model.apply(pretrained_vars, arr, mutable=False)
     assert out.shape == (1, 1000)
 
 
@@ -101,7 +101,7 @@ def _test_pretrained_resnet_activations(size):
             bottleneck.register_forward_hook(ptracker)  # Bottleneck
     pnet.relu.register_forward_hook(ptracker)  # Stem ReLU
 
-    jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)), mutable=False, train=False)
+    jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)), mutable=False)
     with torch.no_grad():
         pout = pnet(torch.ones((1, 3, 224, 224))).numpy()
 
@@ -149,7 +149,7 @@ def test_pretrained_resnetd_activation_shapes(size):
 
     pnet[2].register_forward_hook(ptracker)  # Stem
 
-    jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)), mutable=False, train=False)
+    jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)), mutable=False)
     with torch.no_grad():
         pout = pnet(torch.ones((1, 3, 224, 224))).numpy()
 
@@ -199,7 +199,7 @@ def _test_pretrained_resnest_activations(size):
     pnet.conv1[6].register_forward_hook(ptracker)  # Stem Conv
     pnet.relu.register_forward_hook(ptracker)  # Stem Output
 
-    jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)), mutable=False, train=False)
+    jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)), mutable=False)
     with torch.no_grad():
         pout = pnet(torch.ones((1, 3, 224, 224))).numpy()
 

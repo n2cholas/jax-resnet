@@ -113,23 +113,3 @@ def test_slice(cls):
     assert max(layer_nums) == 4
     assert min(layer_nums) == 0
     assert len(model.layers) == 5
-
-
-# @pytest.mark.parametrize(
-#     'cls', [ResNet18, ResNet50, ResNetD18, ResNetD50, ResNeSt50, ResNeSt50Fast])
-# def test_consistent_convblock(cls):
-#     # TODO: improve this test, right now only checks if it runs
-#     model = cls(n_classes=10, consistent_conv_block=True)
-#     init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
-#     variables = model.init(jax.random.PRNGKey(0), init_array)
-#     model.apply(variables, init_array, mutable=False, train=False)
-
-# @pytest.mark.parametrize(
-#     'cls', [ResNet18, ResNet50, ResNetD18, ResNetD50, ResNeSt50, ResNeSt50Fast])
-# def test_backbone_only(cls):
-#     # TODO: improve this test, right now only checks if it runs
-#     model = cls(n_classes=10, backbone_only=True)
-#     init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
-#     variables = model.init(jax.random.PRNGKey(0), init_array)
-#     out = model.apply(variables, init_array, mutable=False, train=False)
-#     assert out.ndim == 4

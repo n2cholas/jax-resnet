@@ -8,8 +8,6 @@ from flax import linen as nn
 from .common import ConvBlock, ModuleDef
 from .splat import SplAtConv2d
 
-Array = Any
-
 STAGE_SIZES = {
     18: [2, 2, 2, 2],
     34: [3, 4, 6, 3],
@@ -25,11 +23,11 @@ class ResNetStem(nn.Module):
     conv_block_cls: ModuleDef = ConvBlock
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         return self.conv_block_cls(64,
                                    kernel_size=(7, 7),
                                    strides=(2, 2),
-                                   padding=[(3, 3), (3, 3)])(x, train=train)
+                                   padding=[(3, 3), (3, 3)])(x)
 
 
 class ResNetDStem(nn.Module):
@@ -40,13 +38,13 @@ class ResNetDStem(nn.Module):
     adaptive_first_width: bool = True  # TODO: Find better name.
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         cls = partial(self.conv_block_cls, kernel_size=(3, 3), padding=((1, 1), (1, 1)))
         first_width = (8 * (x.shape[-1] + 1)
                        if self.adaptive_first_width else self.stem_width)
-        x = cls(first_width, strides=(2, 2))(x, train=train)
-        x = cls(self.stem_width, strides=(1, 1))(x, train=train)
-        x = cls(self.stem_width * 2, strides=(1, 1))(x, train=train)
+        x = cls(first_width, strides=(2, 2))(x)
+        x = cls(self.stem_width, strides=(1, 1))(x)
+        x = cls(self.stem_width * 2, strides=(1, 1))(x)
         return x
 
 
@@ -60,12 +58,12 @@ class ResNetSkipConnection(nn.Module):
     conv_block_cls: ModuleDef = ConvBlock
 
     @nn.compact
-    def __call__(self, x, out_shape, train: bool = True):
+    def __call__(self, x, out_shape):
         if x.shape != out_shape:
             x = self.conv_block_cls(out_shape[-1],
                                     kernel_size=(1, 1),
                                     strides=self.strides,
-                                    activation=lambda y: y)(x, train=train)
+                                    activation=lambda y: y)(x)
         return x
 
 
@@ -74,12 +72,11 @@ class ResNetDSkipConnection(nn.Module):
     conv_block_cls: ModuleDef = ConvBlock
 
     @nn.compact
-    def __call__(self, x, out_shape, train: bool = True):
+    def __call__(self, x, out_shape):
         if self.strides != (1, 1):
             x = nn.avg_pool(x, (2, 2), strides=(2, 2), padding=((0, 0), (0, 0)))
         if x.shape[-1] != out_shape[-1]:
-            x = self.conv_block_cls(out_shape[-1], (1, 1),
-                                    activation=lambda y: y)(x, train=train)
+            x = self.conv_block_cls(out_shape[-1], (1, 1), activation=lambda y: y)(x)
         return x
 
 
@@ -97,14 +94,14 @@ class ResNetBlock(nn.Module):
     skip_cls: ModuleDef = ResNetSkipConnection
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
         y = self.conv_block_cls(self.n_hidden,
                                 padding=[(1, 1), (1, 1)],
-                                strides=self.strides)(x, train=train)
+                                strides=self.strides)(x)
         y = self.conv_block_cls(self.n_hidden, padding=[(1, 1), (1, 1)],
-                                is_last=True)(y, train=train)
-        return self.activation(y + skip_cls(self.strides)(x, y.shape, train=train))
+                                is_last=True)(y)
+        return self.activation(y + skip_cls(self.strides)(x, y.shape))
 
 
 class ResNetBottleneckBlock(nn.Module):
@@ -116,15 +113,14 @@ class ResNetBottleneckBlock(nn.Module):
     skip_cls: ModuleDef = ResNetSkipConnection
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
-        y = self.conv_block_cls(self.n_hidden, kernel_size=(1, 1))(x, train=train)
+        y = self.conv_block_cls(self.n_hidden, kernel_size=(1, 1))(x)
         y = self.conv_block_cls(self.n_hidden,
                                 strides=self.strides,
-                                padding=((1, 1), (1, 1)))(y, train=train)
-        y = self.conv_block_cls(self.n_hidden * 4, kernel_size=(1, 1),
-                                is_last=True)(y, train=train)
-        return self.activation(y + skip_cls(self.strides)(x, y.shape, train=train))
+                                padding=((1, 1), (1, 1)))(y)
+        y = self.conv_block_cls(self.n_hidden * 4, kernel_size=(1, 1), is_last=True)(y)
+        return self.activation(y + skip_cls(self.strides)(x, y.shape))
 
 
 class ResNetDBlock(ResNetBlock):
@@ -145,7 +141,7 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
     splat_cls: ModuleDef = SplAtConv2d
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         # TODO: implement groups != 1 and radix != 2
         assert self.groups == 1
         assert self.radix == 2
@@ -154,7 +150,7 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
         n_filters = self.n_hidden * 4
         group_width = int(self.n_hidden * (self.bottleneck_width / 64.)) * self.groups
 
-        y = self.conv_block_cls(group_width, kernel_size=(1, 1))(x, train=train)
+        y = self.conv_block_cls(group_width, kernel_size=(1, 1))(x)
 
         if self.strides != (1, 1) and self.avg_pool_first:
             y = nn.avg_pool(y, (3, 3), strides=self.strides, padding=[(1, 1), (1, 1)])
@@ -164,28 +160,23 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
                            strides=(1, 1),
                            padding=[(1, 1), (1, 1)],
                            groups=self.groups,
-                           radix=self.radix)(y, train=train)
+                           radix=self.radix)(y)
 
         if self.strides != (1, 1) and not self.avg_pool_first:
             y = nn.avg_pool(y, (3, 3), strides=self.strides, padding=[(1, 1), (1, 1)])
 
-        y = self.conv_block_cls(n_filters, kernel_size=(1, 1),
-                                is_last=True)(y, train=train)
+        y = self.conv_block_cls(n_filters, kernel_size=(1, 1), is_last=True)(y)
 
-        return self.activation(y + skip_cls(self.strides)(x, y.shape, train=train))
+        return self.activation(y + skip_cls(self.strides)(x, y.shape))
 
 
 class Sequential(nn.Module):
-    layers: Sequence[Union[nn.Module, Callable[[Array], Array]]]
+    layers: Sequence[Union[nn.Module, Callable[[jnp.ndarray], jnp.ndarray]]]
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         for layer in self.layers:
-            # TODO: Hacky. Treat layers more consistently by removing train?
-            if isinstance(layer, nn.Module) and not isinstance(layer, nn.Dense):
-                x = layer(x, train=train)
-            else:
-                x = layer(x)
+            x = layer(x)
         return x
 
 
@@ -214,7 +205,6 @@ def ResNet(
             layers.append(block_cls(n_hidden=2**(i + 6), strides=strides))
 
     layers.append(partial(jnp.mean, axis=(1, 2)))  # global average pool
-    #  TODO: Remove hack block train arg from Dense.
     layers.append(nn.Dense(n_classes))
     return Sequential(layers)
 

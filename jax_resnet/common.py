@@ -21,7 +21,7 @@ class ConvBlock(nn.Module):
     force_conv_bias: bool = False
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         x = self.conv_cls(
             self.n_filters,
             self.kernel_size,
@@ -33,7 +33,8 @@ class ConvBlock(nn.Module):
         if self.norm_cls:
             scale_init = (nn.initializers.zeros
                           if self.is_last else nn.initializers.ones)
-            x = self.norm_cls(use_running_average=not train, scale_init=scale_init)(x)
+            mutable = self.is_mutable_collection('batch_stats')
+            x = self.norm_cls(use_running_average=not mutable, scale_init=scale_init)(x)
 
         if not self.is_last:
             x = self.activation(x)

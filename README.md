@@ -38,8 +38,7 @@ ResNeSt50, variables = pretrained_resnest(50)
 model = ResNeSt50()
 out = model.apply(variables,
                   jnp.ones((32, 224, 224, 3)),  # ImageNet sized inputs.
-                  mutable=False,  # Ensure `batch_stats` aren't updated.
-                  train=False)  # Use running mean/var for batchnorm.
+                  mutable=False)  # Ensure `batch_stats` aren't updated.
 ```
 
 You must install PyTorch yourself
