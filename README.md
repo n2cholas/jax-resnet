@@ -38,8 +38,7 @@ ResNeSt50, variables = pretrained_resnest(50)
 model = ResNeSt50()
 out = model.apply(variables,
                   jnp.ones((32, 224, 224, 3)),  # ImageNet sized inputs.
-                  mutable=False,  # Ensure `batch_stats` aren't updated.
-                  train=False)  # Use running mean/var for batchnorm.
+                  mutable=False)  # Ensure `batch_stats` aren't updated.
 ```
 
 You must install PyTorch yourself
@@ -51,6 +50,16 @@ A pretrained checkpoint for ResNetD-50 is available from
 match exactly. Feel free to use it via `pretrained_resnetd` (should be fine for
 transfer learning). You must install fast.ai yourself
 ([instructions](https://docs.fast.ai/)) to use this function.
+
+### Transfer Learning
+
+To extract a subset of the model, you can use
+`Sequential(model.layers[start:end])`.
+
+The `slice_variables` function (found in in
+[`common.py`](https://github.com/n2cholas/jax-resnet/blob/main/jax_resnet/common.py))
+allows you to extract the corresponding subset of the variables dict. Check out
+that docstring for more information.
 
 ## References
 

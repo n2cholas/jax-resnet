@@ -1,7 +1,10 @@
 from functools import partial
-from typing import Callable, Iterable, Optional, Tuple, Union
+from typing import (Any, Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple,
+                    Union)
 
-from flax import linen as nn
+import flax
+import flax.linen as nn
+import jax.numpy as jnp
 
 ModuleDef = Callable[..., Callable]
 
@@ -21,7 +24,7 @@ class ConvBlock(nn.Module):
     force_conv_bias: bool = False
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         x = self.conv_cls(
             self.n_filters,
             self.kernel_size,
@@ -33,8 +36,68 @@ class ConvBlock(nn.Module):
         if self.norm_cls:
             scale_init = (nn.initializers.zeros
                           if self.is_last else nn.initializers.ones)
-            x = self.norm_cls(use_running_average=not train, scale_init=scale_init)(x)
+            mutable = self.is_mutable_collection('batch_stats')
+            x = self.norm_cls(use_running_average=not mutable, scale_init=scale_init)(x)
 
         if not self.is_last:
             x = self.activation(x)
         return x
+
+
+class Sequential(nn.Module):
+    layers: Sequence[Union[nn.Module, Callable[[jnp.ndarray], jnp.ndarray]]]
+
+    @nn.compact
+    def __call__(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+
+def slice_variables(variables: Mapping[str, Any],
+                    start: int = 0,
+                    end: Optional[int] = None) -> flax.core.FrozenDict:
+    """Returns variables dict correspond to a sliced model.
+
+    You can retrieve the model corresponding to the slices variables via
+    `Sequential(model.layers[start:end])`.
+
+    The variables mapping should have the same structure as a Sequential
+    model's variable dict (based on Flax):
+
+    ```python
+    variables = {
+        'group1': ['layers_a', 'layer_b', ...]
+        'group2': ['layers_a', 'layer_b', ...]
+        ...,
+    }
+
+    Typically, `'group1'` and `'group2'` would be `'params'` and
+    `'batch_stats'`, but they don't have to be. `a, b, ...` correspond to the
+    integer indices of the layers.
+
+    Args:
+        variables: A mapping (typically a flax.core.FrozenDict) containing the
+            model parameters and state.
+        start: integer indicating the first layer to keep.
+        end: integer indicating the first layer to exclude (can be negative,
+            has the same semantics as negative list indexing).
+
+    Returns:
+        A flax.core.FrozenDict with the subset of parameters/state requested.
+    """
+    last_ind = max(int(s.split('_')[-1]) for s in variables['params'])
+    if end is None:
+        end = last_ind + 1
+    elif end < 0:
+        end += last_ind + 1
+
+    sliced_variables: Dict[str, Any] = {}
+    for k, var_dict in variables.items():  # usually params and batch_stats
+        sliced_variables[k] = {
+            f'layers_{i-start}': var_dict[f'layers_{i}']
+            for i in range(start, end)
+            if f'layers_{i}' in var_dict
+        }
+
+    return flax.core.freeze(sliced_variables)

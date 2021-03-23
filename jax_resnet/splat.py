@@ -33,7 +33,7 @@ class SplAtConv2d(nn.Module):
     match_reference: bool = False
 
     @nn.compact
-    def __call__(self, x, train: bool = True):
+    def __call__(self, x):
         inter_channels = max(x.shape[-1] * self.radix // self.reduction_factor, 32)
 
         conv_block = self.conv_block_cls(self.channels * self.radix,
@@ -42,7 +42,7 @@ class SplAtConv2d(nn.Module):
                                          groups=self.groups * self.radix,
                                          padding=self.padding)
         conv_cls = conv_block.conv_cls  # type: ignore
-        x = conv_block(x, train=train)
+        x = conv_block(x)
 
         if self.radix > 1:
             # torch split takes split_size: int(rchannel//self.radix)
@@ -59,8 +59,7 @@ class SplAtConv2d(nn.Module):
         gap = self.conv_block_cls(inter_channels,
                                   kernel_size=(1, 1),
                                   groups=self.cardinality,
-                                  force_conv_bias=self.match_reference)(gap,
-                                                                        train=train)
+                                  force_conv_bias=self.match_reference)(gap)
 
         attn = conv_cls(self.channels * self.radix,
                         kernel_size=(1, 1),

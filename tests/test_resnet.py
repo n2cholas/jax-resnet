@@ -103,22 +103,26 @@ def test_resnest_stem_param_count():
     assert n_params(ResNeStStem()) == 112832
 
 
-@pytest.mark.parametrize(
-    'cls', [ResNet18, ResNet50, ResNetD18, ResNetD50, ResNeSt50, ResNeSt50Fast])
-def test_consistent_convblock(cls):
-    # TODO: improve this test, right now only checks if it runs
-    model = cls(n_classes=10, consistent_conv_block=True)
-    init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
-    variables = model.init(jax.random.PRNGKey(0), init_array)
-    model.apply(variables, init_array, mutable=False, train=False)
+@pytest.mark.parametrize('start,end', [(0, 5), (0, None), (0, -3), (4, -2), (3, -1),
+                                       (2, None)])
+def test_slice_variables(start, end):
+    model = ResNet18(n_classes=10)
+    key = jax.random.PRNGKey(0)
 
+    variables = model.init(key, jnp.ones((1, 224, 224, 3)))
+    sliced_vars = slice_variables(variables, start, end)
+    sliced_model = Sequential(model.layers[start:end])
 
-@pytest.mark.parametrize(
-    'cls', [ResNet18, ResNet50, ResNetD18, ResNetD50, ResNeSt50, ResNeSt50Fast])
-def test_backbone_only(cls):
-    # TODO: improve this test, right now only checks if it runs
-    model = cls(n_classes=10, backbone_only=True)
-    init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
-    variables = model.init(jax.random.PRNGKey(0), init_array)
-    out = model.apply(variables, init_array, mutable=False, train=False)
-    assert out.ndim == 4
+    # Need the correct number of input channels for slice:
+    first = variables['params'][f'layers_{start}']['ConvBlock_0']['Conv_0']['kernel']
+    slice_inp = jnp.ones((1, 224, 224, first.shape[2]))
+    exp_sliced_vars = sliced_model.init(key, slice_inp)
+
+    assert set(sliced_vars['params'].keys()) == set(exp_sliced_vars['params'].keys())
+    assert set(sliced_vars['batch_stats'].keys()) == set(
+        exp_sliced_vars['batch_stats'].keys())
+
+    assert jax.tree_map(jnp.shape,
+                        sliced_vars) == jax.tree_map(jnp.shape, exp_sliced_vars)
+
+    sliced_model.apply(sliced_vars, slice_inp, mutable=False)
