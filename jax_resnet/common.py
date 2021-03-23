@@ -1,5 +1,6 @@
 from functools import partial
-from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple, Union
+from typing import (Any, Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple,
+                    Union)
 
 import flax
 import flax.linen as nn
@@ -53,40 +54,49 @@ class Sequential(nn.Module):
         return x
 
 
-def slice_model(
-    resnet: Sequential,
-    start: int = 0,
-    end: Optional[int] = None,
-    *,
-    variables: Optional[flax.core.FrozenDict] = None
-) -> Union[Sequence, Tuple[Sequential, flax.core.FrozenDict]]:
-    """Returns ResNet with a subset of the layers from indices [start, end).
+def slice_variables(variables: Mapping[str, Any],
+                    start: int = 0,
+                    end: Optional[int] = None) -> flax.core.FrozenDict:
+    """Returns variables dict with a subset of the parameters/state.
+
+    The variables mapping should have the same structure as a Sequential
+    model's variable dict (based on Flax):
+
+    ```python
+    variables = {
+        'group1': ['layers_a', 'layer_b', ...]
+        'group2': ['layers_a', 'layer_b', ...]
+        ...,
+    }
+
+    Typically, `'group1'` and `'group2'` would be `'params'` and
+    `'batch_stats'`, but they don't have to be. `a, b, ...` correspond to the
+    integer indices of the layers.
+
+    You can retrieve the model corresponding to the slices variables via
+    `Sequential(model.layers[start:end])`.
 
     Args:
-        resnet: A Sequential model (i.e. a flax.linen.Module with a `layers`
-            attribute holding all the layers).
+        variables: A mapping (typically a flax.core.FrozenDict) containing the
+            model parameters and state.
         start: integer indicating the first layer to keep.
         end: integer indicating the first layer to exclude (can be negative,
             has the same semantics as negative list indexing).
-        variables: The flax.FrozenDict extract a subset of the layer state
-            from.
 
     Returns:
-        If variables is provided, a tuple with the sliced model and variables,
-        otherwise just the sliced model.
+        A flax.core.FrozenDict with the subset of parameters/state requested.
     """
-    if variables is None:
-        return Sequential(resnet.layers[start:end])
-    else:
-        end_ind = end if end is not None else 0
-        if end_ind < 0:
-            end_ind = max(int(s.split('_')[-1]) for s in variables['params']) + end_ind
+    last_ind = max(int(s.split('_')[-1]) for s in variables['params'])
+    if end is None:
+        end = last_ind
+    elif end < 0:
+        end += last_ind
 
-        sliced_variables: Dict[str, Any] = {}
-        for k, var_dict in variables.items():  # usually params and batch_stats
-            sliced_variables[k] = {}
-            for i in range(start, end_ind):
-                if f'layers_{i}' in var_dict:
-                    sliced_variables[k][f'layers_{i}'] = var_dict[f'layers_{i}']
+    sliced_variables: Dict[str, Any] = {}
+    for k, var_dict in variables.items():  # usually params and batch_stats
+        sliced_variables[k] = {}
+        for i in range(start, end):
+            if f'layers_{i}' in var_dict:
+                sliced_variables[k][f'layers_{i}'] = var_dict[f'layers_{i}']
 
-        return Sequential(resnet.layers[start:end]), flax.core.freeze(sliced_variables)
+    return flax.core.freeze(sliced_variables)

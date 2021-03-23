@@ -53,11 +53,13 @@ transfer learning). You must install fast.ai yourself
 
 ### Transfer Learning
 
-The `slice_model` function (found in in
+To extract a subset of the model, you can use
+`Sequential(model.layers[start:end])`.
+
+The `slice_variables` function (found in in
 [`common.py`](https://github.com/n2cholas/jax-resnet/blob/main/jax_resnet/common.py))
-allows you to extract a subsection of the model and variables dict (e.g.
-everything but the Dense layer, so you can add your own classification head).
-Check out that docstring for more information.
+allows you to extract the corresponding subset of the variables dict. Check out
+that docstring for more information.
 
 ## References
 
