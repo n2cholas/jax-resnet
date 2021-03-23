@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import flax
 import jax.numpy as jnp
@@ -209,23 +209,43 @@ def ResNet(
     return Sequential(layers)
 
 
-def slice(resnet: Sequential,
-          variables: Mapping[str, Any],
-          start: int = 0,
-          end: int = -1):
-    """Returns ResNet with a subset of the layers from indices [start, end)."""
-    variables = flax.core.unfreeze(variables)
-    if end < 0:
-        end = max(int(s.split('_')[-1]) for s in variables['params']) + end
+def slice_model(
+    resnet: Sequential,
+    start: int = 0,
+    end: Optional[int] = None,
+    *,
+    variables: Optional[flax.core.FrozenDict] = None
+) -> Union[Sequence, Tuple[Sequential, flax.core.FrozenDict]]:
+    """Returns ResNet with a subset of the layers from indices [start, end).
 
-    sliced_variables: Dict[str, Any] = {}
-    for k, var_dict in variables.items():  # usually params and batch_stats
-        sliced_variables[k] = {}
-        for i in range(start, end):
-            if f'layers_{i}' in var_dict:
-                sliced_variables[k][f'layers_{i}'] = var_dict[f'layers_{i}']
+    Args:
+        resnet: A Sequential model (i.e. a flax.linen.Module with a `layers`
+            attribute holding all the layers).
+        start: integer indicating the first layer to keep.
+        end: integer indicating the first layer to exclude (can be negative,
+            has the same semantics as negative list indexing).
+        variables: The flax.FrozenDict extract a subset of the layer state
+            from.
 
-    return Sequential(resnet.layers[start:end]), flax.core.freeze(sliced_variables)
+    Returns:
+        If variables is provided, a tuple with the sliced model and variables,
+        otherwise just the sliced model.
+    """
+    if variables is None:
+        return Sequential(resnet.layers[start:end])
+    else:
+        end_ind = end if end is not None else 0
+        if end_ind < 0:
+            end_ind = max(int(s.split('_')[-1]) for s in variables['params']) + end_ind
+
+        sliced_variables: Dict[str, Any] = {}
+        for k, var_dict in variables.items():  # usually params and batch_stats
+            sliced_variables[k] = {}
+            for i in range(start, end_ind):
+                if f'layers_{i}' in var_dict:
+                    sliced_variables[k][f'layers_{i}'] = var_dict[f'layers_{i}']
+
+        return Sequential(resnet.layers[start:end]), flax.core.freeze(sliced_variables)
 
 
 # yapf: disable
