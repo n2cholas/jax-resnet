@@ -42,17 +42,7 @@ class PTModuleTracker:
         self.outputs[name].append(out.detach().permute(0, 2, 3, 1).numpy())
 
 
-@pytest.mark.parametrize('size, pretrained_fn', [
-    (50, pretrained_resnet),
-    (101, pretrained_resnet),
-    (152, pretrained_resnet),
-    (50, pretrained_resnetd),
-    (50, pretrained_resnest),
-    (101, pretrained_resnest),
-    (200, pretrained_resnest),
-    (269, pretrained_resnest),
-])
-def test_pretrained(size, pretrained_fn):
+def _test_pretrained(size, pretrained_fn):
     model_cls, pretrained_vars = pretrained_fn(size)
     model = model_cls()
     arr = jnp.ones((1, 224, 224, 3), jnp.float32)
@@ -66,8 +56,28 @@ def test_pretrained(size, pretrained_fn):
     assert out.shape == (1, 1000)
 
 
-@pytest.mark.parametrize('size', [50, 101, 152])
-def test_pretrained_resnet_activations(size):
+@pytest.mark.parametrize('size, pretrained_fn', [
+    (50, pretrained_resnet),
+    (50, pretrained_resnetd),
+    (50, pretrained_resnest),
+])
+def test_pretrained(size, pretrained_fn):
+    _test_pretrained(size, pretrained_fn)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize('size, pretrained_fn', [
+    (101, pretrained_resnet),
+    (152, pretrained_resnet),
+    (101, pretrained_resnest),
+    (200, pretrained_resnest),
+    (269, pretrained_resnest),
+])
+def test_pretrained_slow(size, pretrained_fn):
+    _test_pretrained(size, pretrained_fn)
+
+
+def _test_pretrained_resnet_activations(size):
     jax2pt_names = {  # Layer Name conversions
         'ResNetBottleneckBlock': 'Bottleneck',
         'ResNetStem': 'ReLU',
@@ -100,6 +110,17 @@ def test_pretrained_resnet_activations(size):
         for jact, pact in zip(jtracker.outputs[jkey], ptracker.outputs[pkey]):
             np.testing.assert_allclose(jact, pact, atol=0.001)
     np.testing.assert_allclose(jout, pout, atol=0.0001)
+
+
+@pytest.mark.parametrize('size', [50])
+def test_pretrained_resnet_activations(size):
+    _test_pretrained_resnet_activations(size)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize('size', [101, 152])
+def test_pretrained_resnet_activations_slow(size):
+    _test_pretrained_resnet_activations(size)
 
 
 @pytest.mark.parametrize('size', [50])
@@ -141,8 +162,7 @@ def test_pretrained_resnetd_activation_shapes(size):
     # np.testing.assert_allclose(jout, pout, atol=0.0001)
 
 
-@pytest.mark.parametrize('size', [50, 101, 200, 269])
-def test_pretrained_resnest_activations(size):
+def _test_pretrained_resnest_activations(size):
     jtracker = JaxModuleTracker()
     ptracker = PTModuleTracker()
     jax2pt_names = {  # Layer Name conversions
@@ -188,3 +208,14 @@ def test_pretrained_resnest_activations(size):
         for jact, pact in zip(jtracker.outputs[jkey], ptracker.outputs[pkey]):
             np.testing.assert_allclose(jact, pact, atol=0.001)
     np.testing.assert_allclose(jout, pout, atol=0.0001)
+
+
+@pytest.mark.parametrize('size', [50])
+def test_pretrained_resnest_activations(size):
+    _test_pretrained_resnest_activations(size)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize('size', [101, 200, 269])
+def test_pretrained_resnest_activations_slow(size):
+    _test_pretrained_resnest_activations(size)

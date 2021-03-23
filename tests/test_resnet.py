@@ -35,23 +35,55 @@ def n_params(model, init_shape=(1, 224, 224, 3)):
 
 
 @pytest.mark.parametrize('size', [18, 34, 50, 101, 152])
-def test_resnet_param_count(size):
+def _test_resnet_param_count(size):
     model = eval(f'ResNet{size}')(n_classes=1000)
     assert n_params(model) == RESNET_PARAM_COUNTS[size]
 
 
-@pytest.mark.parametrize('size', [18, 34, 50, 101, 152])
-def test_resnetd_param_count(size):
+@pytest.mark.parametrize('size', [18, 50])
+def test_resnet_param_count(size):
+    _test_resnet_param_count(size)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize('size', [34, 101, 152])
+def test_resnet_param_count_slow(size):
+    _test_resnet_param_count(size)
+
+
+def _test_resnetd_param_count(size):
     model = eval(f'ResNetD{size}')(n_classes=1000)
     assert n_params(model) == RESNETD_PARAM_COUNTS[size]
 
 
+@pytest.mark.parametrize('size', [18, 50])
+def test_resnetd_param_count(size):
+    _test_resnetd_param_count(size)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize('size', [34, 101, 152])
+def test_resnetd_param_count_slow(size):
+    _test_resnetd_param_count(size)
+
+
 @pytest.mark.parametrize('size', [50, 101, 200, 269])
-def test_resnest_param_count(size):
+def _test_resnest_param_count(size):
     block_cls = partial(ResNeStBottleneckBlock,
                         splat_cls=partial(SplAtConv2d, match_reference=True))
     model = eval(f'ResNeSt{size}')(n_classes=1000, block_cls=block_cls)
     assert n_params(model) == RESNEST_PARAM_COUNTS[size]
+
+
+@pytest.mark.parametrize('size', [50])
+def test_resnest_param_count(size):
+    _test_resnest_param_count(size)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize('size', [101, 200, 269])
+def test_resnest_param_count_slow(size):
+    _test_resnest_param_count(size)
 
 
 def test_resnest_fast_param_count():
