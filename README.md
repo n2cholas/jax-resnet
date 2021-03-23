@@ -42,10 +42,15 @@ out = model.apply(variables,
                   train=False)  # Use running mean/var for batchnorm.
 ```
 
+You must install PyTorch yourself
+([instructions](https://pytorch.org/get-started/locally/)) to use those
+functions.
+
 A pretrained checkpoint for ResNetD-50 is available from
 [fast.ai](https://github.com/fastai/fastai), however, the activations do not
 match exactly. Feel free to use it via `pretrained_resnetd` (should be fine for
-transfer learning).
+transfer learning). You must install fast.ai yourself
+([instructions](https://docs.fast.ai/)) to use this function.
 
 ## References
 

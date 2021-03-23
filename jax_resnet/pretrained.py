@@ -22,7 +22,9 @@ def pretrained_resnet(size: int) -> Tuple[ModuleDef, Mapping]:
     try:
         import torch
     except ImportError:
-        raise ImportError('Install `torch` to use this function.')
+        raise ImportError('Install `torch` to use this function. You may also need to '
+                          '`pip install fvcore` due to this issue: '
+                          'https://github.com/pytorch/pytorch/issues/53948')
 
     if size not in (50, 101, 152):
         raise ValueError('Ensure size is one of (50, 101, 200, 269)')
