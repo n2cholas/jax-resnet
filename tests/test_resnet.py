@@ -103,45 +103,26 @@ def test_resnest_stem_param_count():
     assert n_params(ResNeStStem()) == 112832
 
 
-@pytest.mark.parametrize('cls', [ResNet18])
-def test_slice_variables(cls):
+@pytest.mark.parametrize('start,end', [(0, 5), (0, None), (0, -3), (4, -2), (3, -1),
+                                       (2, None)])
+def test_slice_variables(start, end):
     model = ResNet18(n_classes=10)
-    init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
-    variables = model.init(jax.random.PRNGKey(0), init_array)
-    variables = slice_variables(variables, 0, 5)
-    layer_nums = [int(s.split('_')[-1]) for s in variables['params'].keys()]
-    assert max(layer_nums) == 4
-    assert min(layer_nums) == 0
+    key = jax.random.PRNGKey(0)
 
+    variables = model.init(key, jnp.ones((1, 224, 224, 3)))
+    sliced_vars = slice_variables(variables, start, end)
+    sliced_model = Sequential(model.layers[start:end])
 
-@pytest.mark.parametrize('cls', [ResNet18])
-def test_slice_variables_negative_end(cls):
-    model = cls(n_classes=10)
-    init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
-    variables = model.init(jax.random.PRNGKey(0), init_array)
-    variables = slice_variables(variables, 0, -2)
-    layer_nums = [int(s.split('_')[-1]) for s in variables['params'].keys()]
-    assert max(layer_nums) == 8  # 8 since layers 9 and 10 have no params
-    assert min(layer_nums) == 0
+    # Need the correct number of input channels for slice:
+    first = variables['params'][f'layers_{start}']['ConvBlock_0']['Conv_0']['kernel']
+    slice_inp = jnp.ones((1, 224, 224, first.shape[2]))
+    exp_sliced_vars = sliced_model.init(key, slice_inp)
 
+    assert set(sliced_vars['params'].keys()) == set(exp_sliced_vars['params'].keys())
+    assert set(sliced_vars['batch_stats'].keys()) == set(
+        exp_sliced_vars['batch_stats'].keys())
 
-@pytest.mark.parametrize('cls', [ResNet18])
-def test_slice_variables_no_end(cls):
-    model = cls(n_classes=10)
-    init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
-    variables = model.init(jax.random.PRNGKey(0), init_array)
-    variables = slice_variables(variables, 3)
-    layer_nums = [int(s.split('_')[-1]) for s in variables['params'].keys()]
-    assert max(layer_nums) == len(model.layers) - 3
-    assert min(layer_nums) == 3
+    assert jax.tree_map(jnp.shape,
+                        sliced_vars) == jax.tree_map(jnp.shape, exp_sliced_vars)
 
-
-@pytest.mark.parametrize('cls', [ResNet18])
-def test_slice_variables_no_start(cls):
-    model = cls(n_classes=10)
-    init_array = jnp.ones((2, 224, 224, 3), dtype=jnp.float32)
-    variables = model.init(jax.random.PRNGKey(0), init_array)
-    variables = slice_variables(variables, end=3)
-    layer_nums = [int(s.split('_')[-1]) for s in variables['params'].keys()]
-    assert max(layer_nums) == 2  # 2 since layer 3 has no params
-    assert min(layer_nums) == 0
+    sliced_model.apply(sliced_vars, slice_inp, mutable=False)

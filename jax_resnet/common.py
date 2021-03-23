@@ -57,7 +57,10 @@ class Sequential(nn.Module):
 def slice_variables(variables: Mapping[str, Any],
                     start: int = 0,
                     end: Optional[int] = None) -> flax.core.FrozenDict:
-    """Returns variables dict with a subset of the parameters/state.
+    """Returns variables dict correspond to a sliced model.
+
+    You can retrieve the model corresponding to the slices variables via
+    `Sequential(model.layers[start:end])`.
 
     The variables mapping should have the same structure as a Sequential
     model's variable dict (based on Flax):
@@ -73,9 +76,6 @@ def slice_variables(variables: Mapping[str, Any],
     `'batch_stats'`, but they don't have to be. `a, b, ...` correspond to the
     integer indices of the layers.
 
-    You can retrieve the model corresponding to the slices variables via
-    `Sequential(model.layers[start:end])`.
-
     Args:
         variables: A mapping (typically a flax.core.FrozenDict) containing the
             model parameters and state.
@@ -88,15 +88,16 @@ def slice_variables(variables: Mapping[str, Any],
     """
     last_ind = max(int(s.split('_')[-1]) for s in variables['params'])
     if end is None:
-        end = last_ind
+        end = last_ind + 1
     elif end < 0:
-        end += last_ind
+        end += last_ind + 1
 
     sliced_variables: Dict[str, Any] = {}
     for k, var_dict in variables.items():  # usually params and batch_stats
-        sliced_variables[k] = {}
-        for i in range(start, end):
-            if f'layers_{i}' in var_dict:
-                sliced_variables[k][f'layers_{i}'] = var_dict[f'layers_{i}']
+        sliced_variables[k] = {
+            f'layers_{i-start}': var_dict[f'layers_{i}']
+            for i in range(start, end)
+            if f'layers_{i}' in var_dict
+        }
 
     return flax.core.freeze(sliced_variables)
