@@ -1,12 +1,13 @@
-jax
-jaxlib
+--find-links https://download.pytorch.org/whl/torch_stable.html
 fastai>=2.2
-git+https://github.com/google/flax.git
 flake8
 fvcore
-pytest
-pre-commit
+git+https://github.com/google/flax.git
 isort
-torch
-yapf==0.30.0
+jax>=0.2.6
+jaxlib
 mypy
+pre-commit
+pytest
+torch==1.7.1+cpu
+yapf==0.30.0
