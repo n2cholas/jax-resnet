@@ -22,7 +22,7 @@ Pretrained checkpoints from
 [`torch.hub`](https://pytorch.org/docs/stable/hub.html) are available for the
 following networks:
 
-- ResNet[50, 101, 152]
+- ResNet[18, 34, 50, 101, 152]
 - WideResNet[50, 101]
 - ResNeSt[50, 101, 200, 269]
 
@@ -30,6 +30,10 @@ The models are
 [tested](https://github.com/n2cholas/jax-resnet/blob/main/tests/test_pretrained.py)
 to have the same intermediate activations and outputs as the `torch.hub`
 implementations.
+
+A pretrained checkpoint for ResNetD-50 is available from
+[fast.ai](https://github.com/fastai/fastai).
+The activations do not match exactly, but the final accuracy matches.
 
 ```python
 import jax.numpy as jnp
@@ -43,12 +47,8 @@ out = model.apply(variables,
 ```
 
 You must install PyTorch yourself
-([instructions](https://pytorch.org/get-started/locally/)) to use those
+([instructions](https://pytorch.org/get-started/locally/)) to use these
 functions.
-
-A pretrained checkpoint for ResNetD-50 is available from
-[fast.ai](https://github.com/fastai/fastai).
-The activations do not match exactly, but the final accuracy matches.
 
 ### Transfer Learning
 
@@ -68,7 +68,9 @@ example](https://github.com/pytorch/examples/blob/master/imagenet/main.py).
 
 |Model       | Size | Top 1 | Top 5 |
 |------------|-----:|------:|------:|
-|ResNet      |    50| 76.13%| 92.86%|
+|ResNet      |    18| 69.75%| 89.06%|
+|            |    34| 73.29%| 91.42%|
+|            |    50| 76.13%| 92.86%|
 |            |   101| 77.37%| 93.53%|
 |            |   152| 78.30%| 94.04%|
 |Wide ResNet |    50| 78.48%| 94.08%|
