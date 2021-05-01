@@ -3,9 +3,9 @@
 ![Build & Tests](https://github.com/n2cholas/jax-resnet/workflows/Build%20and%20Tests/badge.svg)
 
 A Flax (Linen) implementation of ResNet (He et al. 2015), Wide ResNet
-(Zagoruyko & Komodakis 2016), ResNet-D (He et al. 2020), and ResNeSt (Zhang et
-al. 2020). The code is modular so you can mix and match the various stem,
-residual, and bottleneck implementations.
+(Zagoruyko & Komodakis 2016), ResNeXt (Xie et al. 2017), ResNet-D (He et al.
+2020), and ResNeSt (Zhang et al. 2020). The code is modular so you can mix and
+match the various stem, residual, and bottleneck implementations.
 
 ## Installation
 
@@ -24,6 +24,7 @@ following networks:
 
 - ResNet[18, 34, 50, 101, 152]
 - WideResNet[50, 101]
+- ResNeXt[50, 101]
 - ResNeSt[50, 101, 200, 269]
 
 The models are
@@ -75,6 +76,8 @@ example](https://github.com/pytorch/examples/blob/master/imagenet/main.py).
 |            |   152| 78.30%| 94.04%|
 |Wide ResNet |    50| 78.48%| 94.08%|
 |            |   101| 78.88%| 94.29%|
+|ResNeXt     |    50| 77.60%| 93.70%|
+|            |   101| 79.30%| 94.51%|
 |ResNet-D    |    50| 77.57%| 93.85%|
 <!--
 |ResNeSt |    50| 80.97%| 95.38%|
@@ -98,7 +101,10 @@ The ResNeSt validation data was preprocessed as in
 - [Deep Residual Learning for Image Recognition. Kaiming He, Xiangyu Zhang,
   Shaoqing Ren, Jian Sun. _arXiv 2015_.](https://arxiv.org/abs/1512.03385)
 - [Wide Residual Networks. Sergey Zagoruyko, Nikos Komodakis. _BMVC
-  2016_](https://arxiv.org/abs/1605.07146).
+  2016_](https://arxiv.org/abs/1605.07146)
+- [Aggregated Residual Transformations for Deep Neural Networks. Saining Xie,
+  Ross Girshick, Piotr Dollár, Zhuowen Tu, Kaiming He. _CVPR
+  2017_.](https://arxiv.org/abs/1611.05431)
 - [Bag of Tricks for Image Classification with Convolutional Neural Networks.
   Tong He, Zhi Zhang, Hang Zhang, Zhongyue Zhang, Junyuan Xie, Mu Li. _CVPR
   2019_.](https://arxiv.org/abs/1812.01187)
