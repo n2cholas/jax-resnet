@@ -102,6 +102,8 @@ class ResNetBottleneckBlock(nn.Module):
     n_hidden: int
     strides: Tuple[int, int] = (1, 1)
     expansion: int = 4
+    groups: int = 1  # cardinality
+    base_width: int = 64
 
     activation: Callable = nn.relu
     conv_block_cls: ModuleDef = ConvBlock
@@ -110,9 +112,14 @@ class ResNetBottleneckBlock(nn.Module):
     @nn.compact
     def __call__(self, x):
         skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
-        y = self.conv_block_cls(self.n_hidden, kernel_size=(1, 1))(x)
-        y = self.conv_block_cls(self.n_hidden,
+        group_width = int(self.n_hidden * (self.base_width / 64.)) * self.groups
+
+        # Downsampling strides in 3x3 conv instead of 1x1 conv, which improves accuracy.
+        # This variant is called ResNet V1.5 (matches torchvision).
+        y = self.conv_block_cls(group_width, kernel_size=(1, 1))(x)
+        y = self.conv_block_cls(group_width,
                                 strides=self.strides,
+                                groups=self.groups,
                                 padding=((1, 1), (1, 1)))(y)
         y = self.conv_block_cls(self.n_hidden * self.expansion,
                                 kernel_size=(1, 1),
@@ -131,21 +138,16 @@ class ResNetDBottleneckBlock(ResNetBottleneckBlock):
 class ResNeStBottleneckBlock(ResNetBottleneckBlock):
     skip_cls: ModuleDef = ResNeStSkipConnection
     avg_pool_first: bool = False
-    groups: int = 1  # cardinality
     radix: int = 2
-    bottleneck_width: int = 64
 
     splat_cls: ModuleDef = SplAtConv2d
 
     @nn.compact
     def __call__(self, x):
-        # TODO: implement groups != 1 and radix != 2
-        assert self.groups == 1
-        assert self.radix == 2
+        assert self.radix == 2  # TODO: implement radix != 2
 
         skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
-        n_filters = self.n_hidden * self.expansion
-        group_width = int(self.n_hidden * (self.bottleneck_width / 64.)) * self.groups
+        group_width = int(self.n_hidden * (self.base_width / 64.)) * self.groups
 
         y = self.conv_block_cls(group_width, kernel_size=(1, 1))(x)
 
@@ -162,7 +164,9 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
         if self.strides != (1, 1) and not self.avg_pool_first:
             y = nn.avg_pool(y, (3, 3), strides=self.strides, padding=[(1, 1), (1, 1)])
 
-        y = self.conv_block_cls(n_filters, kernel_size=(1, 1), is_last=True)(y)
+        y = self.conv_block_cls(self.n_hidden * self.expansion,
+                                kernel_size=(1, 1),
+                                is_last=True)(y)
 
         return self.activation(y + skip_cls(self.strides)(x, y.shape))
 
@@ -216,6 +220,11 @@ WideResNet50 = partial(ResNet50, hidden_sizes=(128, 256, 512, 1024),
                        block_cls=partial(ResNetBottleneckBlock, expansion=2))
 WideResNet101 = partial(ResNet101, hidden_sizes=(128, 256, 512, 1024),
                         block_cls=partial(ResNetBottleneckBlock, expansion=2))
+
+ResNeXt50 = partial(ResNet50,
+                    block_cls=partial(ResNetBottleneckBlock, groups=32, base_width=4))
+ResNeXt101 = partial(ResNet101,
+                     block_cls=partial(ResNetBottleneckBlock, groups=32, base_width=8))
 
 ResNetD18 = partial(ResNet, stage_sizes=STAGE_SIZES[18],
                     stem_cls=ResNetDStem, block_cls=ResNetDBlock)

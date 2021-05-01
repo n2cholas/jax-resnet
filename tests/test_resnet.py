@@ -16,6 +16,9 @@ RESNET_PARAM_COUNTS = {
 # https://pytorch.org/hub/pytorch_vision_wide_resnet/
 WIDE_RESNET_PARAM_COUNTS = {50: 68883240, 101: 126886696}
 
+# https://pytorch.org/hub/pytorch_vision_resnext/
+RESNEXT_PARAM_COUNTS = {50: 25028904, 101: 88791336}
+
 # https://docs.fast.ai/vision.models.xresnet.html
 RESNETD_PARAM_COUNTS = {
     18: 11708744,
@@ -63,6 +66,19 @@ def test_wide_resnet_param_count(size):
 def test_wide_resnet_param_count_slow(size):
     model = eval(f'WideResNet{size}')(n_classes=1000)
     assert n_params(model) == WIDE_RESNET_PARAM_COUNTS[size]
+
+
+@pytest.mark.parametrize('size', [50])
+def test_resnext_param_count(size):
+    model = eval(f'ResNeXt{size}')(n_classes=1000)
+    assert n_params(model) == RESNEXT_PARAM_COUNTS[size]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize('size', [101])
+def test_resnext_param_count_slow(size):
+    model = eval(f'ResNeXt{size}')(n_classes=1000)
+    assert n_params(model) == RESNEXT_PARAM_COUNTS[size]
 
 
 def _test_resnetd_param_count(size):

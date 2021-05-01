@@ -1,3 +1,4 @@
+from enum import Enum
 from functools import partial
 
 import jax
@@ -42,6 +43,13 @@ class PTModuleTracker:
         self.outputs[name].append(out.detach().permute(0, 2, 3, 1).numpy())
 
 
+class RNType(Enum):
+    # Contains ResNets that use the vanilla ResNetBottleneckBlock class
+    resnet = 1
+    wide_resnet = 2
+    resnext = 3
+
+
 def _test_pretrained(size, pretrained_fn):
     model_cls, pretrained_vars = pretrained_fn(size)
     model = model_cls()
@@ -60,6 +68,7 @@ def _test_pretrained(size, pretrained_fn):
     (18, pretrained_resnet),
     (50, pretrained_resnet),
     (50, pretrained_wide_resnet),
+    (50, pretrained_resnext),
     (50, pretrained_resnetd),
     (50, pretrained_resnest),
 ])
@@ -73,6 +82,7 @@ def test_pretrained(size, pretrained_fn):
     (101, pretrained_resnet),
     (152, pretrained_resnet),
     (101, pretrained_wide_resnet),
+    (101, pretrained_resnext),
     (101, pretrained_resnest),
     (200, pretrained_resnest),
     (269, pretrained_resnest),
@@ -81,17 +91,16 @@ def test_pretrained_slow(size, pretrained_fn):
     _test_pretrained(size, pretrained_fn)
 
 
-def _test_pretrained_resnet_activations(size, is_wide):
+def _test_pretrained_resnet_activations(size, rntype):
     jtracker = JaxModuleTracker()
     ptracker = PTModuleTracker()
 
     jax2pt_names = {'ResNetStem': 'ReLU'}  # Layer Name conversions
     if size >= 50:
         jax2pt_names['ResNetBottleneckBlock'] = 'Bottleneck'
-        block_cls = partial(jtracker(ResNetBottleneckBlock),
-                            expansion=(2 if is_wide else 4))
+        block_cls = jtracker(ResNetBottleneckBlock)
     else:
-        assert not is_wide
+        assert rntype == RNType.resnet
         jax2pt_names['ResNetBlock'] = 'BasicBlock'
         block_cls = jtracker(ResNetBlock)
 
@@ -99,14 +108,24 @@ def _test_pretrained_resnet_activations(size, is_wide):
                              conv_cls=jtracker(Conv),
                              norm_cls=partial(jtracker(BatchNorm), momentum=0.9))
     stem_cls = partial(jtracker(ResNetStem), conv_block_cls=conv_block_cls)
-    jnet = eval(f'{"Wide" if is_wide else ""}ResNet{size}')(n_classes=1000,
-                                                            block_cls=block_cls,
-                                                            stem_cls=stem_cls)
+    kwargs = {'stem_cls': stem_cls, 'n_classes': 1000}
 
-    _, variables = pretrained_wide_resnet(size) if is_wide else pretrained_resnet(size)
-    pnet = torch.hub.load('pytorch/vision:v0.6.0',
-                          (f'wide_resnet{size}_2' if is_wide else f'resnet{size}'),
-                          pretrained=True).eval()
+    if rntype == RNType.wide_resnet:
+        jnet = eval(f'WideResNet{size}')(block_cls=partial(block_cls, expansion=2),
+                                         **kwargs)
+        _, variables = pretrained_wide_resnet(size)
+        thub_name = f'wide_resnet{size}_2'
+    elif rntype == RNType.resnext:
+        block_cls = partial(block_cls, groups=32, base_width=(4 if size == 50 else 8))
+        jnet = eval(f'ResNeXt{size}')(block_cls=block_cls, **kwargs)
+        _, variables = pretrained_resnext(size)
+        thub_name = 'resnext50_32x4d' if size == 50 else 'resnext101_32x8d'
+    else:
+        jnet = eval(f'ResNet{size}')(block_cls=block_cls, **kwargs)
+        _, variables = pretrained_resnet(size)
+        thub_name = f'resnet{size}'
+
+    pnet = torch.hub.load('pytorch/vision:v0.6.0', thub_name, pretrained=True).eval()
 
     for layer in [pnet.layer1, pnet.layer2, pnet.layer3, pnet.layer4]:
         for block in layer:
@@ -124,16 +143,19 @@ def _test_pretrained_resnet_activations(size, is_wide):
     np.testing.assert_allclose(jout, pout, atol=0.0001)
 
 
-@pytest.mark.parametrize('size, is_wide', [(18, False), (50, False), (50, True)])
-def test_pretrained_resnet_activations(size, is_wide):
-    _test_pretrained_resnet_activations(size, is_wide)
+@pytest.mark.parametrize('size, rntype', [(18, RNType.resnet), (50, RNType.resnet),
+                                          (50, RNType.wide_resnet),
+                                          (50, RNType.resnext)])
+def test_pretrained_resnet_activations(size, rntype):
+    _test_pretrained_resnet_activations(size, rntype)
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize('size, is_wide', [(34, False), (101, False), (101, True),
-                                           (152, False)])
-def test_pretrained_resnet_activations_slow(size, is_wide):
-    _test_pretrained_resnet_activations(size, is_wide)
+@pytest.mark.parametrize('size, rntype', [(34, RNType.resnet), (101, RNType.resnet),
+                                          (101, RNType.wide_resnet),
+                                          (101, RNType.resnext), (152, RNType.resnet)])
+def test_pretrained_resnet_activations_slow(size, rntype):
+    _test_pretrained_resnet_activations(size, rntype)
 
 
 @pytest.mark.parametrize('size', [50])

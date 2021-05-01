@@ -34,7 +34,7 @@ def pretrained_resnet(
     size: int,
     state_dict: Optional[Mapping[str, PyTorchTensor]] = None
 ) -> Tuple[ModuleDef, FrozenDict]:
-    """Returns returns variables for ResNet from torch.hub.
+    """Returns pretrained variables for ResNet ported from torch.hub.
 
     Args:
         size: 18, 34, 50, 101 or 152.
@@ -96,7 +96,7 @@ def pretrained_wide_resnet(
     size: int,
     state_dict: Optional[Mapping[str, PyTorchTensor]] = None
 ) -> Tuple[ModuleDef, FrozenDict]:
-    """Returns returns variables for Wide ResNet from torch.hub.
+    """Returns pretrained variables for Wide ResNet ported from torch.hub.
 
     Args:
         size: 50 or 101.
@@ -123,11 +123,42 @@ def pretrained_wide_resnet(
     return model_cls, variables
 
 
+def pretrained_resnext(
+    size: int,
+    state_dict: Optional[Mapping[str, PyTorchTensor]] = None
+) -> Tuple[ModuleDef, FrozenDict]:
+    """Returns pretrained variables for ResNeXt ported from torch.hub.
+
+    Args:
+        size: 50 or 101.
+        state_dict: If provided, this state dict will be used over the
+            pretrained torch.hub model. The keys must match the torch.hub resnext.
+
+    Returns:
+        Module Class and variables dictionary for Flax ResNeXt.
+    """
+    if size not in (50, 101):
+        raise ValueError('Ensure size is one of (50, 101)')
+
+    if state_dict is None:
+        if not torch_exists:
+            raise ImportError('Install `torch` to use this function.')
+
+        state_dict = torch.hub.load(
+            'pytorch/vision:v0.6.0',
+            ('resnext50_32x4d' if size == 50 else 'resnext101_32x8d'),
+            pretrained=True).state_dict()
+
+    _, variables = pretrained_resnet(size, state_dict)
+    model_cls = partial(getattr(resnet, f'ResNeXt{size}'), n_classes=1000)
+    return model_cls, variables
+
+
 def pretrained_resnetd(
     size: int,
     state_dict: Optional[Mapping[str, PyTorchTensor]] = None
 ) -> Tuple[ModuleDef, FrozenDict]:
-    """Returns returns variables for ResNet-D from Fast.AI.
+    """Returns pretrained variables for ResNet-D ported from Fast.AI.
 
     Fast.AI calls this model XResNet.
 
@@ -185,7 +216,7 @@ def pretrained_resnest(
     size: int,
     state_dict: Optional[Mapping[str, PyTorchTensor]] = None
 ) -> Tuple[ModuleDef, FrozenDict]:
-    """Returns returns variables for ResNeSt from torch.hub.
+    """Returns pretrained variables for ResNeSt ported from torch.hub.
 
     Args:
         size: 50, 101, 200, or 269.
