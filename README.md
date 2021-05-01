@@ -2,10 +2,10 @@
 
 ![Build & Tests](https://github.com/n2cholas/jax-resnet/workflows/Build%20and%20Tests/badge.svg)
 
-A Flax (Linen) implementation of ResNet (He, Kaiming, et al. 2015), ResNet-D
-(He, Tong et al. 2020), and ResNest (Zhang, Hang et al. 2020). The code is
-modular so you can mix and match the various stem, residual, and bottleneck
-implementations.
+A Flax (Linen) implementation of ResNet (He et al. 2015), Wide ResNet
+(Zagoruyko & Komodakis 2016), ResNet-D (He et al. 2020), and ResNeSt (Zhang et
+al. 2020). The code is modular so you can mix and match the various stem,
+residual, and bottleneck implementations.
 
 ## Installation
 
@@ -22,8 +22,9 @@ Pretrained checkpoints from
 [`torch.hub`](https://pytorch.org/docs/stable/hub.html) are available for the
 following networks:
 
-- ResNeSt[50, 101, 200, 269]
 - ResNet[50, 101, 152]
+- WideResNet[50, 101]
+- ResNeSt[50, 101, 200, 269]
 
 The models are
 [tested](https://github.com/n2cholas/jax-resnet/blob/main/tests/test_pretrained.py)
@@ -65,12 +66,14 @@ The top 1 and top 5 accuracies reported below are on the ImageNet2012
 validation split.  The data was preprocessed as in the official [PyTorch
 example](https://github.com/pytorch/examples/blob/master/imagenet/main.py).
 
-|Model   | Size | Top 1 | Top 5 |
-|--------|-----:|------:|------:|
-|ResNet  |    50| 76.13%| 92.86%|
-|        |   101| 77.37%| 93.53%|
-|        |   152| 78.30%| 94.04%|
-|ResNet-D|    50| 77.57%| 93.85%|
+|Model       | Size | Top 1 | Top 5 |
+|------------|-----:|------:|------:|
+|ResNet      |    50| 76.13%| 92.86%|
+|            |   101| 77.37%| 93.53%|
+|            |   152| 78.30%| 94.04%|
+|Wide ResNet |    50| 78.48%| 94.08%|
+|            |   101| 78.88%| 94.29%|
+|ResNet-D    |    50| 77.57%| 93.85%|
 <!--
 |ResNeSt |    50| 80.97%| 95.38%|
 |        |   101| 82.17%| 95.97%|
@@ -92,6 +95,8 @@ The ResNeSt validation data was preprocessed as in
 
 - [Deep Residual Learning for Image Recognition. Kaiming He, Xiangyu Zhang,
   Shaoqing Ren, Jian Sun. _arXiv 2015_.](https://arxiv.org/abs/1512.03385)
+- [Wide Residual Networks. Sergey Zagoruyko, Nikos Komodakis. _BMVC
+  2016_](https://arxiv.org/abs/1605.07146).
 - [Bag of Tricks for Image Classification with Convolutional Neural Networks.
   Tong He, Zhi Zhang, Hang Zhang, Zhongyue Zhang, Junyuan Xie, Mu Li. _CVPR
   2019_.](https://arxiv.org/abs/1812.01187)

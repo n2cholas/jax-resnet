@@ -44,4 +44,4 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest -vvv
+        pytest -vvv -m "not-slow"
