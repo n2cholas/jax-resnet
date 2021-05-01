@@ -23,15 +23,13 @@ RESNETD_PARAM_COUNTS = {
 }
 
 # github.com/zhanghang1989/ResNeSt (torch version)
-# NOTE: might change after github.com/zhanghang1989/ResNeSt/issues/125
 RESNEST_PARAM_COUNTS = {50: 27483240, 101: 48275016, 200: 70201544, 269: 110929480}
 
 
 def n_params(model, init_shape=(1, 224, 224, 3)):
     init_array = jnp.ones(init_shape, jnp.float32)
     params = model.init(jax.random.PRNGKey(0), init_array)['params']
-    return jax.tree_util.tree_reduce(lambda x, y: x + y,
-                                     jax.tree_util.tree_map(lambda x: x.size, params))
+    return sum(map(jnp.size, jax.tree_leaves(params)))
 
 
 @pytest.mark.parametrize('size', [18, 34, 50, 101, 152])

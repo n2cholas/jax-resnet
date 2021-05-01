@@ -34,7 +34,7 @@ class ResNetDStem(nn.Module):
     stem_width: int = 32
 
     # If True, n_filters for first conv is (input_channels + 1) * 8
-    adaptive_first_width: bool = True  # TODO: Find better name.
+    adaptive_first_width: bool = False
 
     @nn.compact
     def __call__(self, x):
@@ -166,8 +166,10 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
 
 def ResNet(
     block_cls: ModuleDef,
+    *,
     stage_sizes: Sequence[int],
     n_classes: int,
+    hidden_sizes: Sequence[int] = (64, 128, 256, 512),
     conv_cls: ModuleDef = nn.Conv,
     norm_cls: Optional[ModuleDef] = partial(nn.BatchNorm, momentum=0.9),
     conv_block_cls: ModuleDef = ConvBlock,
@@ -176,17 +178,17 @@ def ResNet(
                                 window_shape=(3, 3),
                                 strides=(2, 2),
                                 padding=((1, 1), (1, 1))),
-):
+) -> Sequential:
     conv_block_cls = partial(conv_block_cls, conv_cls=conv_cls, norm_cls=norm_cls)
     stem_cls = partial(stem_cls, conv_block_cls=conv_block_cls)
     block_cls = partial(block_cls, conv_block_cls=conv_block_cls)
 
     layers = [stem_cls(), pool_fn]
 
-    for i, n_blocks in enumerate(stage_sizes):
+    for i, (hsize, n_blocks) in enumerate(zip(hidden_sizes, stage_sizes)):
         for b in range(n_blocks):
             strides = (1, 1) if i == 0 or b != 0 else (2, 2)
-            layers.append(block_cls(n_hidden=2**(i + 6), strides=strides))
+            layers.append(block_cls(n_hidden=hsize, strides=strides))
 
     layers.append(partial(jnp.mean, axis=(1, 2)))  # global average pool
     layers.append(nn.Dense(n_classes))

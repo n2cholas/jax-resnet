@@ -48,8 +48,8 @@ def _test_pretrained(size, pretrained_fn):
     arr = jnp.ones((1, 224, 224, 3), jnp.float32)
     init_vars = model.init(jax.random.PRNGKey(0), arr)
 
-    eq_tree = jax.tree_util.tree_multimap(lambda x, y: x.shape == y.shape, init_vars,
-                                          pretrained_vars)
+    eq_tree = jax.tree_multimap(lambda x, y: x.shape == y.shape, init_vars,
+                                pretrained_vars)
     assert jax.tree_util.tree_all(eq_tree)
 
     out = model.apply(pretrained_vars, arr, mutable=False)
