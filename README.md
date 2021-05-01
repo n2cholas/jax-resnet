@@ -46,9 +46,8 @@ You must install PyTorch yourself
 functions.
 
 A pretrained checkpoint for ResNetD-50 is available from
-[fast.ai](https://github.com/fastai/fastai), however, the activations do not
-match exactly. Feel free to use it via `pretrained_resnetd` (should be fine for
-transfer learning).
+[fast.ai](https://github.com/fastai/fastai).
+The activations do not match exactly, but the final accuracy matches.
 
 ### Transfer Learning
 
@@ -59,6 +58,35 @@ The `slice_variables` function (found in in
 [`common.py`](https://github.com/n2cholas/jax-resnet/blob/main/jax_resnet/common.py))
 allows you to extract the corresponding subset of the variables dict. Check out
 that docstring for more information.
+
+## Checkpoint Accuracies
+
+The top 1 and top 5 accuracies reported below are on the ImageNet2012
+validation split.  The data was preprocessed as in the official [PyTorch
+example](https://github.com/pytorch/examples/blob/master/imagenet/main.py).
+
+|Model   | Size | Top 1 | Top 5 |
+|--------|-----:|------:|------:|
+|ResNet  |    50| 76.13%| 92.86%|
+|        |   101| 77.37%| 93.53%|
+|        |   152| 78.30%| 94.04%|
+|ResNet-D|    50| 77.57%| 93.85%|
+<!--
+|ResNeSt |    50| 80.97%| 95.38%|
+|        |   101| 82.17%| 95.97%|
+|        |   200| 82.35%| 96.11%|
+|        |   269| 79.19%| 94.53%|
+-->
+
+The ResNeSt validation data was preprocessed as in
+[zhang1989/ResNeSt](https://github.com/zhanghang1989/ResNeSt/blob/master/scripts/torch/verify.py).
+
+|Model   | Size | Crop Size | Top 1 | Top 5 |
+|--------|-----:|----------:|------:|------:|
+|ResNeSt |    50|        224| 81.05%| 95.42%|
+|        |   101|        256| 82.82%| 96.32%|
+|        |   200|        320| 83.84%| 96.86%|
+|        |   269|        416| 84.53%| 96.98%|
 
 ## References
 

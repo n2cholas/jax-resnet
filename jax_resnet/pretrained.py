@@ -1,4 +1,3 @@
-import warnings
 from functools import partial
 from typing import Dict, Mapping, Sequence, Tuple
 
@@ -90,9 +89,6 @@ def pretrained_resnetd(size: int) -> Tuple[ModuleDef, Mapping]:
     Returns:
         Module Class and variables dictionary for Flax ResNetD.
     """
-    warnings.warn('This pretrained model\'s activations do not match the FastAI '
-                  'reference implementation _exactly_. The model should still be '
-                  'fine for transfer learning.')
     try:
         import torch
     except ImportError:
