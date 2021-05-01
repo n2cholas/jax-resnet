@@ -169,14 +169,14 @@ def _test_pretrained_resnest_activations(size):
         'ResNeStBottleneckBlock': 'Bottleneck',
         'SplAtConv2d': 'SplAtConv2d',
         'Conv': 'Conv2d',
-        'ResNeStStem': 'ReLU',
+        'ResNetDStem': 'ReLU',
     }
 
     # Create JAX Model and track all the modules
     block_cls = partial(jtracker(ResNeStBottleneckBlock),
                         splat_cls=partial(jtracker(SplAtConv2d), match_reference=True))
     conv_block_cls = partial(ConvBlock, conv_cls=jtracker(Conv))
-    stem_cls = partial(jtracker(ResNeStStem),
+    stem_cls = partial(jtracker(ResNetDStem),
                        conv_block_cls=conv_block_cls,
                        stem_width=(32 if size == 50 else 64))
     jnet = eval(f'ResNeSt{size}')(n_classes=1000,

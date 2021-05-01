@@ -47,11 +47,6 @@ class ResNetDStem(nn.Module):
         return x
 
 
-class ResNeStStem(ResNetDStem):
-    stem_width: int = 64  # TODO: make this the same as ResNetD?
-    adaptive_first_width: bool = False
-
-
 class ResNetSkipConnection(nn.Module):
     strides: Tuple[int, int]
     conv_block_cls: ModuleDef = ConvBlock
@@ -226,16 +221,19 @@ ResNetD200 = partial(ResNet, stage_sizes=STAGE_SIZES[200],
                      stem_cls=ResNetDStem, block_cls=ResNetDBottleneckBlock)
 
 ResNeSt50Fast = partial(ResNet, stage_sizes=STAGE_SIZES[50],
-                        stem_cls=partial(ResNeStStem, stem_width=32),
+                        stem_cls=ResNetDStem,
                         block_cls=partial(ResNeStBottleneckBlock, avg_pool_first=True))
 ResNeSt50 = partial(ResNet, stage_sizes=STAGE_SIZES[50],
-                    stem_cls=partial(ResNeStStem, stem_width=32),
-                    block_cls=ResNeStBottleneckBlock)
+                    stem_cls=ResNetDStem, block_cls=ResNeStBottleneckBlock)
 ResNeSt101 = partial(ResNet, stage_sizes=STAGE_SIZES[101],
-                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock)
+                     stem_cls=partial(ResNetDStem, stem_width=64),
+                     block_cls=ResNeStBottleneckBlock)
 ResNeSt152 = partial(ResNet, stage_sizes=STAGE_SIZES[152],
-                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock)
+                     stem_cls=partial(ResNetDStem, stem_width=64),
+                     block_cls=ResNeStBottleneckBlock)
 ResNeSt200 = partial(ResNet, stage_sizes=STAGE_SIZES[200],
-                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock)
+                     stem_cls=partial(ResNetDStem, stem_width=64),
+                     block_cls=ResNeStBottleneckBlock)
 ResNeSt269 = partial(ResNet, stage_sizes=STAGE_SIZES[269],
-                     stem_cls=ResNeStStem, block_cls=ResNeStBottleneckBlock)
+                     stem_cls=partial(ResNetDStem, stem_width=64),
+                     block_cls=ResNeStBottleneckBlock)

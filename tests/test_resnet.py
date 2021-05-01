@@ -99,10 +99,6 @@ def test_splatconv2d_param_count():
     assert n_params(splat, init_shape=(1, 28, 28, 128)) == 172992
 
 
-def test_resnest_stem_param_count():
-    assert n_params(ResNeStStem()) == 112832
-
-
 @pytest.mark.parametrize('start,end', [(0, 5), (0, None), (0, -3), (4, -2), (3, -1),
                                        (2, None)])
 def test_slice_variables(start, end):
