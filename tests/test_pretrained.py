@@ -58,6 +58,7 @@ def _test_pretrained(size, pretrained_fn):
 
 @pytest.mark.parametrize('size, pretrained_fn', [
     (50, pretrained_resnet),
+    (50, pretrained_wide_resnet),
     (50, pretrained_resnetd),
     (50, pretrained_resnest),
 ])
@@ -69,6 +70,7 @@ def test_pretrained(size, pretrained_fn):
 @pytest.mark.parametrize('size, pretrained_fn', [
     (101, pretrained_resnet),
     (152, pretrained_resnet),
+    (101, pretrained_wide_resnet),
     (101, pretrained_resnest),
     (200, pretrained_resnest),
     (269, pretrained_resnest),
@@ -77,7 +79,7 @@ def test_pretrained_slow(size, pretrained_fn):
     _test_pretrained(size, pretrained_fn)
 
 
-def _test_pretrained_resnet_activations(size):
+def _test_pretrained_resnet_activations(size, is_wide):
     jax2pt_names = {  # Layer Name conversions
         'ResNetBottleneckBlock': 'Bottleneck',
         'ResNetStem': 'ReLU',
@@ -89,11 +91,15 @@ def _test_pretrained_resnet_activations(size):
                              conv_cls=jtracker(Conv),
                              norm_cls=partial(jtracker(BatchNorm), momentum=0.9))
     stem_cls = partial(jtracker(ResNetStem), conv_block_cls=conv_block_cls)
-    jnet = eval(f'ResNet{size}')(n_classes=1000,
-                                 block_cls=jtracker(ResNetBottleneckBlock),
-                                 stem_cls=stem_cls)
-    _, variables = pretrained_resnet(size)
-    pnet = torch.hub.load('pytorch/vision:v0.6.0', f'resnet{size}',
+    block_cls = partial(jtracker(ResNetBottleneckBlock),
+                        expansion=(2 if is_wide else 4))
+    jnet = eval(f'{"Wide" if is_wide else ""}ResNet{size}')(n_classes=1000,
+                                                            block_cls=block_cls,
+                                                            stem_cls=stem_cls)
+
+    _, variables = pretrained_wide_resnet(size) if is_wide else pretrained_resnet(size)
+    pnet = torch.hub.load('pytorch/vision:v0.6.0',
+                          (f'wide_resnet{size}_2' if is_wide else f'resnet{size}'),
                           pretrained=True).eval()
 
     for layer in [pnet.layer1, pnet.layer2, pnet.layer3, pnet.layer4]:
@@ -112,15 +118,15 @@ def _test_pretrained_resnet_activations(size):
     np.testing.assert_allclose(jout, pout, atol=0.0001)
 
 
-@pytest.mark.parametrize('size', [50])
-def test_pretrained_resnet_activations(size):
-    _test_pretrained_resnet_activations(size)
+@pytest.mark.parametrize('size, is_wide', [(50, False), (50, True)])
+def test_pretrained_resnet_activations(size, is_wide):
+    _test_pretrained_resnet_activations(size, is_wide)
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize('size', [101, 152])
-def test_pretrained_resnet_activations_slow(size):
-    _test_pretrained_resnet_activations(size)
+@pytest.mark.parametrize('size, is_wide', [(101, False), (152, False), (101, True)])
+def test_pretrained_resnet_activations_slow(size, is_wide):
+    _test_pretrained_resnet_activations(size, is_wide)
 
 
 @pytest.mark.parametrize('size', [50])

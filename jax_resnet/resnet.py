@@ -101,6 +101,7 @@ class ResNetBlock(nn.Module):
 class ResNetBottleneckBlock(nn.Module):
     n_hidden: int
     strides: Tuple[int, int] = (1, 1)
+    expansion: int = 4
 
     activation: Callable = nn.relu
     conv_block_cls: ModuleDef = ConvBlock
@@ -113,7 +114,9 @@ class ResNetBottleneckBlock(nn.Module):
         y = self.conv_block_cls(self.n_hidden,
                                 strides=self.strides,
                                 padding=((1, 1), (1, 1)))(y)
-        y = self.conv_block_cls(self.n_hidden * 4, kernel_size=(1, 1), is_last=True)(y)
+        y = self.conv_block_cls(self.n_hidden * self.expansion,
+                                kernel_size=(1, 1),
+                                is_last=True)(y)
         return self.activation(y + skip_cls(self.strides)(x, y.shape))
 
 
@@ -141,7 +144,7 @@ class ResNeStBottleneckBlock(ResNetBottleneckBlock):
         assert self.radix == 2
 
         skip_cls = partial(self.skip_cls, conv_block_cls=self.conv_block_cls)
-        n_filters = self.n_hidden * 4
+        n_filters = self.n_hidden * self.expansion
         group_width = int(self.n_hidden * (self.bottleneck_width / 64.)) * self.groups
 
         y = self.conv_block_cls(group_width, kernel_size=(1, 1))(x)
@@ -208,6 +211,11 @@ ResNet152 = partial(ResNet, stage_sizes=STAGE_SIZES[152],
                     stem_cls=ResNetStem, block_cls=ResNetBottleneckBlock)
 ResNet200 = partial(ResNet, stage_sizes=STAGE_SIZES[200],
                     stem_cls=ResNetStem, block_cls=ResNetBottleneckBlock)
+
+WideResNet50 = partial(ResNet50, hidden_sizes=(128, 256, 512, 1024),
+                       block_cls=partial(ResNetBottleneckBlock, expansion=2))
+WideResNet101 = partial(ResNet101, hidden_sizes=(128, 256, 512, 1024),
+                        block_cls=partial(ResNetBottleneckBlock, expansion=2))
 
 ResNetD18 = partial(ResNet, stage_sizes=STAGE_SIZES[18],
                     stem_cls=ResNetDStem, block_cls=ResNetDBlock)

@@ -1,12 +1,14 @@
 from functools import partial
-from typing import Dict, Mapping, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
-from flax.core import freeze
+from flax.core import FrozenDict, freeze
 from flax.traverse_util import unflatten_dict
 
 from . import resnet
 from .common import ModuleDef
 from .splat import SplAtConv2d
+
+PyTorchTensor = Any
 
 # ResNet-D 50 from FastAI:
 # github.com/fastai/fastai/blob/master/fastai/vision/models/xresnet.py#L22
@@ -22,28 +24,34 @@ _RESNEST_URL = {
 }
 
 
-def pretrained_resnet(size: int) -> Tuple[ModuleDef, Mapping]:
-    """Returns returns variables for ResNest from torch.hub.
+def pretrained_resnet(
+    size: int,
+    state_dict: Optional[Mapping[str, PyTorchTensor]] = None
+) -> Tuple[ModuleDef, FrozenDict]:
+    """Returns returns variables for ResNet from torch.hub.
 
     Args:
         size: 50, 101 or 152.
+        state_dict: If provided, this state dict will be used over the
+            pretrained torch.hub model. The keys must match the torch.hub resnet.
 
     Returns:
         Module Class and variables dictionary for Flax ResNet.
     """
-    try:
-        import torch
-    except ImportError:
-        raise ImportError('Install `torch` to use this function.')
-
     if size not in (50, 101, 152):
-        raise ValueError('Ensure size is one of (50, 101, 200, 269)')
+        raise ValueError('Ensure size is one of (50, 101, 152)')
+
+    if state_dict is None:
+        try:
+            import torch
+        except ImportError:
+            raise ImportError('Install `torch` to use this function.')
+
+        state_dict = torch.hub.load('pytorch/vision:v0.6.0',
+                                    f'resnet{size}',
+                                    pretrained=True).state_dict()
 
     pt2jax: Dict[str, Sequence[str]] = {}
-    state_dict = torch.hub.load('pytorch/vision:v0.6.0',
-                                f'resnet{size}',
-                                pretrained=True).state_dict()
-
     add_bn = _get_add_bn(pt2jax)
 
     pt2jax['conv1.weight'] = ('params', 'layers_0', 'ConvBlock_0', 'Conv_0', 'kernel')
@@ -80,25 +88,67 @@ def pretrained_resnet(size: int) -> Tuple[ModuleDef, Mapping]:
     return model_cls, freeze(unflatten_dict(variables))
 
 
-def pretrained_resnetd(size: int) -> Tuple[ModuleDef, Mapping]:
-    """Returns returns variables for ResNet from fastai.
+def pretrained_wide_resnet(
+    size: int,
+    state_dict: Optional[Mapping[str, PyTorchTensor]] = None
+) -> Tuple[ModuleDef, FrozenDict]:
+    """Returns returns variables for Wide ResNet from torch.hub.
+
+    Args:
+        size: 50 or 101.
+        state_dict: If provided, this state dict will be used over the
+            pretrained torch.hub model. The keys must match the torch.hub wide
+            resnet.
+
+    Returns:
+        Module Class and variables dictionary for Flax Wide ResNet.
+    """
+    if size not in (50, 101):
+        raise ValueError('Ensure size is one of (50, 101)')
+
+    if state_dict is None:
+        try:
+            import torch
+        except ImportError:
+            raise ImportError('Install `torch` to use this function.')
+
+        state_dict = torch.hub.load('pytorch/vision:v0.6.0',
+                                    f'wide_resnet{size}_2',
+                                    pretrained=True).state_dict()
+
+    _, variables = pretrained_resnet(size, state_dict)
+    model_cls = partial(getattr(resnet, f'WideResNet{size}'), n_classes=1000)
+    return model_cls, variables
+
+
+def pretrained_resnetd(
+    size: int,
+    state_dict: Optional[Mapping[str, PyTorchTensor]] = None
+) -> Tuple[ModuleDef, FrozenDict]:
+    """Returns returns variables for ResNet-D from Fast.AI.
+
+    Fast.AI calls this model XResNet.
 
     Args:
         size: 50.
+        state_dict: If provided, this state dict will be used over the
+            pretrained fast.ai model. The keys must match the fastai xresnet.
 
     Returns:
-        Module Class and variables dictionary for Flax ResNetD.
+        Module Class and variables dictionary for Flax ResNet-D.
     """
-    try:
-        import torch
-    except ImportError:
-        raise ImportError('Install `torch` to use this function.')
-
     if size not in _RESNETD_URL.keys():
         raise ValueError(f'Ensure `size` is one of {tuple(_RESNETD_URL.keys())}')
 
-    state_dict = torch.hub.load_state_dict_from_url(_RESNETD_URL[size],
-                                                    map_location='cpu')['model']
+    if state_dict is None:
+        try:
+            import torch
+        except ImportError:
+            raise ImportError('Install `torch` to use this function.')
+
+        state_dict = torch.hub.load_state_dict_from_url(_RESNETD_URL[size],
+                                                        map_location='cpu')['model']
+
     pt2jax: Dict[str, Sequence[str]] = {}
     add_bn = _get_add_bn(pt2jax)
 
@@ -131,25 +181,32 @@ def pretrained_resnetd(size: int) -> Tuple[ModuleDef, Mapping]:
     return model_cls, freeze(unflatten_dict(variables))
 
 
-def pretrained_resnest(size: int) -> Tuple[ModuleDef, Mapping]:
-    """Returns returns variables for ResNest from torch.hub.
+def pretrained_resnest(
+    size: int,
+    state_dict: Optional[Mapping[str, PyTorchTensor]] = None
+) -> Tuple[ModuleDef, FrozenDict]:
+    """Returns returns variables for ResNeSt from torch.hub.
 
     Args:
         size: 50, 101, 200, or 269.
+        state_dict: If provided, this state dict will be used over the
+            pretrained torch.hub model. The keys must match the torch.hub resnet.
 
     Returns:
         Module Class and variables dictionary for Flax ResNeSt.
     """
-    try:
-        import torch
-    except ImportError:
-        raise ImportError('Install `torch` to use this function.')
-
     if size not in _RESNEST_URL.keys():
         raise ValueError(f'Ensure `size` is one of {tuple(_RESNEST_URL.keys())}')
 
-    state_dict = torch.hub.load_state_dict_from_url(_RESNEST_URL[size],
-                                                    map_location='cpu')
+    if state_dict is None:
+        try:
+            import torch
+        except ImportError:
+            raise ImportError('Install `torch` to use this function.')
+
+        state_dict = torch.hub.load_state_dict_from_url(_RESNEST_URL[size],
+                                                        map_location='cpu')
+
     pt2jax: Dict[str, Sequence[str]] = {}
     add_bn = _get_add_bn(pt2jax)
 
