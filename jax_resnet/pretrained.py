@@ -8,6 +8,12 @@ from . import resnet
 from .common import ModuleDef
 from .splat import SplAtConv2d
 
+try:
+    import torch
+    torch_exists = True
+except ImportError:
+    torch_exists = False
+
 PyTorchTensor = Any
 
 # ResNet-D 50 from FastAI:
@@ -31,20 +37,18 @@ def pretrained_resnet(
     """Returns returns variables for ResNet from torch.hub.
 
     Args:
-        size: 50, 101 or 152.
+        size: 18, 34, 50, 101 or 152.
         state_dict: If provided, this state dict will be used over the
             pretrained torch.hub model. The keys must match the torch.hub resnet.
 
     Returns:
         Module Class and variables dictionary for Flax ResNet.
     """
-    if size not in (50, 101, 152):
-        raise ValueError('Ensure size is one of (50, 101, 152)')
+    if size not in (18, 34, 50, 101, 152):
+        raise ValueError('Ensure size is one of (18, 34, 50, 101, 152)')
 
     if state_dict is None:
-        try:
-            import torch
-        except ImportError:
+        if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
         state_dict = torch.hub.load('pytorch/vision:v0.6.0',
@@ -60,7 +64,7 @@ def pretrained_resnet(
     lyr = 2  # block_ind
     for b, n_blocks in enumerate(resnet.STAGE_SIZES[size], 1):
         for i in range(n_blocks):
-            for j in range(3):
+            for j in range(2 + (size >= 50)):
                 pt2jax[f'layer{b}.{i}.conv{j+1}.weight'] = ('params', f'layers_{lyr}',
                                                             f'ConvBlock_{j}', 'Conv_0',
                                                             'kernel')
@@ -107,9 +111,7 @@ def pretrained_wide_resnet(
         raise ValueError('Ensure size is one of (50, 101)')
 
     if state_dict is None:
-        try:
-            import torch
-        except ImportError:
+        if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
         state_dict = torch.hub.load('pytorch/vision:v0.6.0',
@@ -141,9 +143,7 @@ def pretrained_resnetd(
         raise ValueError(f'Ensure `size` is one of {tuple(_RESNETD_URL.keys())}')
 
     if state_dict is None:
-        try:
-            import torch
-        except ImportError:
+        if torch is None:
             raise ImportError('Install `torch` to use this function.')
 
         state_dict = torch.hub.load_state_dict_from_url(_RESNETD_URL[size],
@@ -199,9 +199,7 @@ def pretrained_resnest(
         raise ValueError(f'Ensure `size` is one of {tuple(_RESNEST_URL.keys())}')
 
     if state_dict is None:
-        try:
-            import torch
-        except ImportError:
+        if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
         state_dict = torch.hub.load_state_dict_from_url(_RESNEST_URL[size],

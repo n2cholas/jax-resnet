@@ -57,6 +57,7 @@ def _test_pretrained(size, pretrained_fn):
 
 
 @pytest.mark.parametrize('size, pretrained_fn', [
+    (18, pretrained_resnet),
     (50, pretrained_resnet),
     (50, pretrained_wide_resnet),
     (50, pretrained_resnetd),
@@ -68,6 +69,7 @@ def test_pretrained(size, pretrained_fn):
 
 @pytest.mark.slow
 @pytest.mark.parametrize('size, pretrained_fn', [
+    (34, pretrained_resnet),
     (101, pretrained_resnet),
     (152, pretrained_resnet),
     (101, pretrained_wide_resnet),
@@ -80,19 +82,23 @@ def test_pretrained_slow(size, pretrained_fn):
 
 
 def _test_pretrained_resnet_activations(size, is_wide):
-    jax2pt_names = {  # Layer Name conversions
-        'ResNetBottleneckBlock': 'Bottleneck',
-        'ResNetStem': 'ReLU',
-    }
     jtracker = JaxModuleTracker()
     ptracker = PTModuleTracker()
+
+    jax2pt_names = {'ResNetStem': 'ReLU'}  # Layer Name conversions
+    if size >= 50:
+        jax2pt_names['ResNetBottleneckBlock'] = 'Bottleneck'
+        block_cls = partial(jtracker(ResNetBottleneckBlock),
+                            expansion=(2 if is_wide else 4))
+    else:
+        assert not is_wide
+        jax2pt_names['ResNetBlock'] = 'BasicBlock'
+        block_cls = jtracker(ResNetBlock)
 
     conv_block_cls = partial(ConvBlock,
                              conv_cls=jtracker(Conv),
                              norm_cls=partial(jtracker(BatchNorm), momentum=0.9))
     stem_cls = partial(jtracker(ResNetStem), conv_block_cls=conv_block_cls)
-    block_cls = partial(jtracker(ResNetBottleneckBlock),
-                        expansion=(2 if is_wide else 4))
     jnet = eval(f'{"Wide" if is_wide else ""}ResNet{size}')(n_classes=1000,
                                                             block_cls=block_cls,
                                                             stem_cls=stem_cls)
@@ -103,8 +109,8 @@ def _test_pretrained_resnet_activations(size, is_wide):
                           pretrained=True).eval()
 
     for layer in [pnet.layer1, pnet.layer2, pnet.layer3, pnet.layer4]:
-        for bottleneck in layer:
-            bottleneck.register_forward_hook(ptracker)  # Bottleneck
+        for block in layer:
+            block.register_forward_hook(ptracker)  # Block
     pnet.relu.register_forward_hook(ptracker)  # Stem ReLU
 
     jout = jnet.apply(variables, jnp.ones((1, 224, 224, 3)), mutable=False)
@@ -118,13 +124,14 @@ def _test_pretrained_resnet_activations(size, is_wide):
     np.testing.assert_allclose(jout, pout, atol=0.0001)
 
 
-@pytest.mark.parametrize('size, is_wide', [(50, False), (50, True)])
+@pytest.mark.parametrize('size, is_wide', [(18, False), (50, False), (50, True)])
 def test_pretrained_resnet_activations(size, is_wide):
     _test_pretrained_resnet_activations(size, is_wide)
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize('size, is_wide', [(101, False), (152, False), (101, True)])
+@pytest.mark.parametrize('size, is_wide', [(34, False), (101, False), (101, True),
+                                           (152, False)])
 def test_pretrained_resnet_activations_slow(size, is_wide):
     _test_pretrained_resnet_activations(size, is_wide)
 
