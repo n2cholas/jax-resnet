@@ -23,7 +23,13 @@ _RESNETD_URL = {50: 'https://s3.amazonaws.com/fast-ai-modelzoo/xrn50_940.pth'}
 # ResNest from zhanghang1989/ResNeSt
 # github.com/zhanghang1989/ResNeSt/blob/master/resnest/torch/models/resnest.py#L16-L32
 _RESNEST_URL_FMT = 'https://s3.us-west-1.wasabisys.com/resnest/torch/resnest{}-{}.pth'
-_RESNEST_SHA256 = {50: '528c19ca', 101: '22405ba7', 200: '75117900', 269: '0cc87c48'}
+_RESNEST_SHA256 = {
+    50: '528c19ca',
+    101: '22405ba7',
+    200: '75117900',
+    269: '0cc87c48',
+    '50_fast_2s1x64d': '44938639'
+}
 _RESNEST_URL = {
     size: _RESNEST_URL_FMT.format(size, _RESNEST_SHA256[size][:8])
     for size in _RESNEST_SHA256.keys()
@@ -214,27 +220,33 @@ def pretrained_resnetd(
 
 def pretrained_resnest(
     size: int,
+    fast: bool = False,
     state_dict: Optional[Mapping[str, PyTorchTensor]] = None
 ) -> Tuple[ModuleDef, FrozenDict]:
     """Returns pretrained variables for ResNeSt ported from torch.hub.
 
+    ResNeSt-Fast loads the `resnest50_fast_2s1x64d` variant.
+
     Args:
         size: 50, 101, 200, or 269.
+        fast: whether to load ResNeSt-Fast or not.
         state_dict: If provided, this state dict will be used over the
             pretrained torch.hub model. The keys must match the torch.hub resnet.
 
     Returns:
         Module Class and variables dictionary for Flax ResNeSt.
     """
-    if size not in _RESNEST_URL.keys():
+    if fast and size != 50:
+        raise ValueError('Only ResNeSt 50 is supported with `fast=True`')
+    elif size not in _RESNEST_URL.keys():
         raise ValueError(f'Ensure `size` is one of {tuple(_RESNEST_URL.keys())}')
 
     if state_dict is None:
         if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
-        state_dict = torch.hub.load_state_dict_from_url(_RESNEST_URL[size],
-                                                        map_location='cpu')
+        url = _RESNEST_URL[size if not fast else '50_fast_2s1x64d']
+        state_dict = torch.hub.load_state_dict_from_url(url, map_location='cpu')
 
     pt2jax: Dict[str, Sequence[str]] = {}
     add_bn = _get_add_bn(pt2jax)
@@ -297,10 +309,10 @@ def pretrained_resnest(
     variables = _pytorch_to_jax_params(pt2jax, state_dict, ('fc.weight',))
 
     block_cls = partial(resnet.ResNeStBottleneckBlock,
-                        splat_cls=partial(SplAtConv2d, match_reference=True))
-    model_cls = partial(getattr(resnet, f'ResNeSt{size}'),
-                        n_classes=1000,
-                        block_cls=block_cls)
+                        splat_cls=partial(SplAtConv2d, match_reference=True),
+                        avg_pool_first=fast)
+    model_cls = getattr(resnet, f'ResNeSt{size}' if not fast else 'ResNeSt50Fast')
+    model_cls = partial(model_cls, n_classes=1000, block_cls=block_cls)
     return model_cls, freeze(unflatten_dict(variables))
 
 

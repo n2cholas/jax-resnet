@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import torch
 from fastai.vision.models.xresnet import xresnet50
-# Below imports makes JaxModuleTracker easier
+# Below imports makes implementing JaxModuleTracker easier
 from flax.linen import BatchNorm, Conv
 
 from jax_resnet import *  # noqa
@@ -71,6 +71,7 @@ def _test_pretrained(size, pretrained_fn):
     (50, pretrained_resnext),
     (50, pretrained_resnetd),
     (50, pretrained_resnest),
+    (50, partial(pretrained_resnest, fast=True)),
 ])
 def test_pretrained(size, pretrained_fn):
     _test_pretrained(size, pretrained_fn)
@@ -247,6 +248,7 @@ def _test_pretrained_resnest_activations(size):
 
 @pytest.mark.parametrize('size', [50])
 def test_pretrained_resnest_activations(size):
+    # Fast variant does not match activations exactly.
     _test_pretrained_resnest_activations(size)
 
 

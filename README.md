@@ -1,4 +1,4 @@
-# JAX ResNet - Implementation of ResNet, ResNet-D, and ResNeSt in Flax
+# JAX ResNet - Implementations and Checkpoints for ResNet Variants
 
 ![Build & Tests](https://github.com/n2cholas/jax-resnet/workflows/Build%20and%20Tests/badge.svg)
 
@@ -22,15 +22,16 @@ Pretrained checkpoints from
 [`torch.hub`](https://pytorch.org/docs/stable/hub.html) are available for the
 following networks:
 
-- ResNet[18, 34, 50, 101, 152]
-- WideResNet[50, 101]
-- ResNeXt[50, 101]
-- ResNeSt[50, 101, 200, 269]
+- ResNet [18, 34, 50, 101, 152]
+- WideResNet [50, 101]
+- ResNeXt [50, 101]
+- ResNeSt [50-Fast, 50, 101, 200, 269]
 
 The models are
 [tested](https://github.com/n2cholas/jax-resnet/blob/main/tests/test_pretrained.py)
 to have the same intermediate activations and outputs as the `torch.hub`
-implementations.
+implementations, except ResNeSt-50 Fast, whose activations don't match exactly
+but the final accuracy does.
 
 A pretrained checkpoint for ResNetD-50 is available from
 [fast.ai](https://github.com/fastai/fastai).
@@ -89,12 +90,13 @@ example](https://github.com/pytorch/examples/blob/master/imagenet/main.py).
 The ResNeSt validation data was preprocessed as in
 [zhang1989/ResNeSt](https://github.com/zhanghang1989/ResNeSt/blob/master/scripts/torch/verify.py).
 
-|Model   | Size | Crop Size | Top 1 | Top 5 |
-|--------|-----:|----------:|------:|------:|
-|ResNeSt |    50|        224| 81.05%| 95.42%|
-|        |   101|        256| 82.82%| 96.32%|
-|        |   200|        320| 83.84%| 96.86%|
-|        |   269|        416| 84.53%| 96.98%|
+|Model        | Size | Crop Size | Top 1 | Top 5 |
+|-------------|-----:|----------:|------:|------:|
+|ResNeSt-Fast |    50|        224| 80.53%| 95.34%|
+|ResNeSt      |    50|        224| 81.05%| 95.42%|
+|             |   101|        256| 82.82%| 96.32%|
+|             |   200|        320| 83.84%| 96.86%|
+|             |   269|        416| 84.53%| 96.98%|
 
 ## References
 
