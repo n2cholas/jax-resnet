@@ -9,6 +9,14 @@ match the various stem, residual, and bottleneck implementations.
 
 ## Installation
 
+You can install this package from PyPI:
+
+```sh
+pip install jax-resnet
+```
+
+Or directly from GitHub:
+
 ```sh
 pip install --upgrade git+https://github.com/n2cholas/jax-resnet.git
 ```
