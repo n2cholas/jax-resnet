@@ -65,19 +65,18 @@ def slice_variables(variables: Mapping[str, Any],
     The variables mapping should have the same structure as a Sequential
     model's variable dict (based on Flax):
 
-    ```python
-    variables = {
-        'group1': ['layers_a', 'layer_b', ...]
-        'group2': ['layers_a', 'layer_b', ...]
-        ...,
-    }
+        variables = {
+            'group1': ['layers_a', 'layers_b', ...]
+            'group2': ['layers_a', 'layers_b', ...]
+            ...,
+        }
 
-    Typically, `'group1'` and `'group2'` would be `'params'` and
-    `'batch_stats'`, but they don't have to be. `a, b, ...` correspond to the
-    integer indices of the layers.
+    Typically, 'group1' and 'group2' would be 'params' and 'batch_stats', but
+    they don't have to be. 'a, b, ...' correspond to the integer indices of the
+    layers.
 
     Args:
-        variables: A mapping (typically a flax.core.FrozenDict) containing the
+        variables: A dict (typically a flax.core.FrozenDict) containing the
             model parameters and state.
         start: integer indicating the first layer to keep.
         end: integer indicating the first layer to exclude (can be negative,
