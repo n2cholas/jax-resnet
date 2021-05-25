@@ -7,6 +7,8 @@ import flax.linen as nn
 import jax.numpy as jnp
 
 ModuleDef = Callable[..., Callable]
+# InitFn = Callable[[PRNGKey, Shape, DType], Array]
+InitFn = Callable[[Any, Iterable[int], Any], Any]
 
 
 class ConvBlock(nn.Module):
@@ -17,6 +19,8 @@ class ConvBlock(nn.Module):
     padding: Union[str, Iterable[Tuple[int, int]]] = ((0, 0), (0, 0))
     is_last: bool = False
     groups: int = 1
+    kernel_init: InitFn = nn.initializers.kaiming_normal()
+    bias_init: InitFn = nn.initializers.zeros
 
     conv_cls: ModuleDef = nn.Conv
     norm_cls: Optional[ModuleDef] = partial(nn.BatchNorm, momentum=0.9)
@@ -32,6 +36,8 @@ class ConvBlock(nn.Module):
             use_bias=(not self.norm_cls or self.force_conv_bias),
             padding=self.padding,
             feature_group_count=self.groups,
+            kernel_init=self.kernel_init,
+            bias_init=self.bias_init,
         )(x)
         if self.norm_cls:
             scale_init = (nn.initializers.zeros
