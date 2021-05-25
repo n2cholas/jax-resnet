@@ -22,7 +22,7 @@ _RESNETD_URL = {50: 'https://s3.amazonaws.com/fast-ai-modelzoo/xrn50_940.pth'}
 
 # ResNest from zhanghang1989/ResNeSt
 # github.com/zhanghang1989/ResNeSt/blob/master/resnest/torch/models/resnest.py#L16-L32
-_RESNEST_URL_FMT = 'https://s3.us-west-1.wasabisys.com/resnest/torch/resnest{}-{}.pth'
+_RESNEST_URL_FMT = 'https://github.com/zhanghang1989/ResNeSt/releases/download/weights_step1/resnest{}-{}.pth'  # noqa: E501
 _RESNEST_SHA256 = {
     50: '528c19ca',
     101: '22405ba7',
