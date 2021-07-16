@@ -126,7 +126,7 @@ def _test_pretrained_resnet_activations(size, rntype):
         _, variables = pretrained_resnet(size)
         thub_name = f'resnet{size}'
 
-    pnet = torch.hub.load('pytorch/vision:v0.6.0', thub_name, pretrained=True).eval()
+    pnet = torch.hub.load('pytorch/vision:v0.10.0', thub_name, pretrained=True).eval()
 
     for layer in [pnet.layer1, pnet.layer2, pnet.layer3, pnet.layer4]:
         for block in layer:

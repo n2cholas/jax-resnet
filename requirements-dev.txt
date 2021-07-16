@@ -9,5 +9,5 @@ jaxlib
 mypy
 pre-commit
 pytest
-torch==1.7.1+cpu
+torch==1.9.0+cpu
 yapf==0.30.0

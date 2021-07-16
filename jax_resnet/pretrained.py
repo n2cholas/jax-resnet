@@ -57,7 +57,7 @@ def pretrained_resnet(
         if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
-        state_dict = torch.hub.load('pytorch/vision:v0.6.0',
+        state_dict = torch.hub.load('pytorch/vision:v0.10.0',
                                     f'resnet{size}',
                                     pretrained=True).state_dict()
 
@@ -120,7 +120,7 @@ def pretrained_wide_resnet(
         if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
-        state_dict = torch.hub.load('pytorch/vision:v0.6.0',
+        state_dict = torch.hub.load('pytorch/vision:v0.10.0',
                                     f'wide_resnet{size}_2',
                                     pretrained=True).state_dict()
 
@@ -151,7 +151,7 @@ def pretrained_resnext(
             raise ImportError('Install `torch` to use this function.')
 
         state_dict = torch.hub.load(
-            'pytorch/vision:v0.6.0',
+            'pytorch/vision:v0.10.0',
             ('resnext50_32x4d' if size == 50 else 'resnext101_32x8d'),
             pretrained=True).state_dict()
 
