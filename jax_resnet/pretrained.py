@@ -10,6 +10,9 @@ from .splat import SplAtConv2d
 
 try:
     import torch
+
+    # https://github.com/pytorch/vision/issues/4156#issuecomment-894768539
+    torch.hub._validate_not_a_forked_repo = lambda *_: True  # type: ignore
     torch_exists = True
 except ImportError:
     torch_exists = False
