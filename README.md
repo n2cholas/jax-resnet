@@ -47,9 +47,9 @@ The activations do not match exactly, but the final accuracy matches.
 
 ```python
 import jax.numpy as jnp
-from jax_resnet import pretrained_resnest
+from jax_resnet import pretrained_resnet
 
-ResNeSt50, variables = pretrained_resnest(50)
+ResNeSt50, variables = pretrained_resnet(50)
 model = ResNeSt50()
 out = model.apply(variables,
                   jnp.ones((32, 224, 224, 3)),  # ImageNet sized inputs.
