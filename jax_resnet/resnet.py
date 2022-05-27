@@ -4,7 +4,7 @@ from typing import Callable, Optional, Sequence, Tuple
 import jax.numpy as jnp
 from flax import linen as nn
 
-from .common import ConvBlock, ModuleDef, Sequential
+from .common import ConvBlock, ModuleDef
 from .splat import SplAtConv2d
 
 STAGE_SIZES = {
@@ -185,7 +185,7 @@ def ResNet(
                                 window_shape=(3, 3),
                                 strides=(2, 2),
                                 padding=((1, 1), (1, 1))),
-) -> Sequential:
+) -> nn.Sequential:
     conv_block_cls = partial(conv_block_cls, conv_cls=conv_cls, norm_cls=norm_cls)
     stem_cls = partial(stem_cls, conv_block_cls=conv_block_cls)
     block_cls = partial(block_cls, conv_block_cls=conv_block_cls)
@@ -199,7 +199,7 @@ def ResNet(
 
     layers.append(partial(jnp.mean, axis=(1, 2)))  # global average pool
     layers.append(nn.Dense(n_classes))
-    return Sequential(layers)
+    return nn.Sequential(layers)
 
 
 # yapf: disable

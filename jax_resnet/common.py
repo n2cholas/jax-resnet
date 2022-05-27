@@ -1,10 +1,8 @@
 from functools import partial
-from typing import (Any, Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple,
-                    Union)
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, Union
 
 import flax
 import flax.linen as nn
-import jax.numpy as jnp
 
 ModuleDef = Callable[..., Callable]
 # InitFn = Callable[[PRNGKey, Shape, DType], Array]
@@ -47,16 +45,6 @@ class ConvBlock(nn.Module):
 
         if not self.is_last:
             x = self.activation(x)
-        return x
-
-
-class Sequential(nn.Module):
-    layers: Sequence[Union[nn.Module, Callable[[jnp.ndarray], jnp.ndarray]]]
-
-    @nn.compact
-    def __call__(self, x):
-        for layer in self.layers:
-            x = layer(x)
         return x
 
 
