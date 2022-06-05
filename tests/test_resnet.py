@@ -1,5 +1,6 @@
 import jax
 import pytest
+from flax import linen as nn
 
 from jax_resnet import *  # noqa
 
@@ -137,7 +138,7 @@ def test_slice_variables(start, end):
 
     variables = model.init(key, jnp.ones((1, 224, 224, 3)))
     sliced_vars = slice_variables(variables, start, end)
-    sliced_model = Sequential(model.layers[start:end])
+    sliced_model = nn.Sequential(model.layers[start:end])
 
     # Need the correct number of input channels for slice:
     first = variables['params'][f'layers_{start}']['ConvBlock_0']['Conv_0']['kernel']
